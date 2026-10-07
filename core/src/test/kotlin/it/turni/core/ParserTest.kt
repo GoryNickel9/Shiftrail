@@ -1,0 +1,143 @@
+package it.turni.core
+
+import java.time.Duration
+import java.time.LocalDate
+import java.time.LocalTime
+import org.junit.Assert.*
+import org.junit.Test
+
+class ParserTest {
+    private val monday = LocalDate.of(2026, 10, 5)
+
+    @Test
+    fun timeFormatsAndOvernight() {
+        for ((raw, start, end) in
+            listOf(
+                Triple("12-18", "12:00", "18:00"),
+                Triple("19-01", "19:00", "01:00"),
+                Triple("23:45-5:45", "23:45", "05:45"),
+                Triple("23.45-05.45", "23:45", "05:45"),
+                Triple("11:30-17:30", "11:30", "17:30"),
+                Triple("6:30-12:30", "06:30", "12:30"),
+            )) {
+            val cell = ShiftParser.parse(raw, monday)
+            assertEquals(CellType.WORK_SHIFT, cell.type)
+            assertEquals(LocalTime.parse(start), cell.start)
+            assertEquals(LocalTime.parse(end), cell.end)
+            val duration =
+                Duration.between(cell.date.atTime(cell.start), cell.endDate.atTime(cell.end))
+            assertEquals(6, duration.toHours())
+            assertEquals(end < start, cell.endNextDay)
+        }
+    }
+
+    @Test
+    fun codesAndInvalidTimes() {
+        listOf("X", "FE", "PIR", "A.G.", "CORSO").forEach {
+            assertEquals(CellType.CODE, ShiftParser.parse(it, monday).type)
+        }
+        listOf("6", "25-30", "12:60-18", "12-12", "12-18-20", "12-18 note", "24-01").forEach {
+            assertEquals(it, CellType.UNKNOWN, ShiftParser.parse(it, monday).type)
+        }
+        assertEquals(CellType.EMPTY, ShiftParser.parse("", monday).type)
+        assertEquals(monday.plusDays(1), ShiftParser.parse("19-00", monday).endDate)
+    }
+
+    @Test
+    fun datesAndWeekdays() {
+        listOf("5-ott-2026", "05/10", "05-10", "5 OCT", "05 OTT").forEach {
+            assertEquals(it, monday, ItalianDateParser.date(it, 2026)?.date)
+        }
+        assertTrue(ItalianDateParser.date("5-ott-2026", 2025)!!.explicitYear)
+        assertFalse(ItalianDateParser.date("05/10", 2026)!!.explicitYear)
+        assertNull(ItalianDateParser.date("31/02/2026", 2026))
+        assertEquals(1, ItalianDateParser.weekday("Lunedì"))
+        assertEquals(3, ItalianDateParser.weekday("MERCOLEDI 07/10"))
+        assertNull(ItalianDateParser.weekday("Luca"))
+    }
+
+    @Test
+    fun fuzzyNameDoesNotUseSubstring() {
+        assertEquals(1.0, TextNormalizer.similarity("BALDEDDU LUCA", "Luca Baldeddu"), 1e-9)
+        assertTrue(TextNormalizer.similarity("BALDEDDU", "BALDED DU") > 0.8)
+        assertTrue(TextNormalizer.similarity("Baldeddu Luca", "Baldeddu Marco") < 0.76)
+        assertEquals(0.0, TextNormalizer.similarity("", "Luca"), 0.0)
+    }
+
+    private fun token(text: String, x: Float, y: Float, width: Float = 0.065f) =
+        OcrToken(text, Box(x - width / 2, y - 0.009f, x + width / 2, y + 0.009f), 0.95f)
+
+    private fun fixture(): List<OcrToken> {
+        val days =
+            listOf("LUNEDI", "MARTEDI", "MERCOLEDI", "GIOVEDI", "VENERDI", "SABATO", "DOMENICA")
+        return buildList {
+            days.forEachIndexed { i, day ->
+                add(token(day, 0.29f + 0.105f * i, 0.08f))
+                add(token("${5 + i}-ott-2026", 0.29f + 0.105f * i, 0.105f))
+            }
+            add(token("BALDEDDU LUCA", 0.1f, 0.3f, 0.17f))
+            add(token("ROSSI MARCO", 0.1f, 0.35f, 0.17f))
+            listOf("19-01", "X", "23:45-5:45", "FE", "12-18", "6:30-12:30", "A.G.")
+                .forEachIndexed { i, s -> add(token(s, 0.29f + 0.105f * i, 0.3f)) }
+            add(token("6", 0.33f, 0.3f, 0.008f))
+            add(token("12-18", 0.29f, 0.35f))
+        }
+    }
+
+    @Test
+    fun rowAndColumnsDoNotReadOtherEmployeesOrCounters() {
+        val result = TableParser().extract(fixture(), EmployeeProfile("Luca Baldeddu"), monday)
+        assertTrue(result.issues.isEmpty())
+        assertEquals(7, result.cells.size)
+        assertEquals("19-01", result.cells[0].raw)
+        assertTrue(result.cells[0].endNextDay)
+        assertEquals("A.G.", result.cells[6].code)
+        assertTrue(result.cells.all { it.confidence >= 0.9 })
+        assertEquals(monday.plusDays(6), result.cells[6].date)
+    }
+
+    @Test
+    fun geometryIsScaleIndependentAndSplitTimeWorks() {
+        val tokens = fixture().filterNot { it.text == "19-01" || it.text == "6" }.toMutableList()
+        tokens += token("19", 0.265f, 0.3f, 0.02f)
+        tokens += token("-", 0.285f, 0.3f, 0.008f)
+        tokens += token("01", 0.305f, 0.3f, 0.02f)
+        val result = TableParser().extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
+        assertEquals(LocalTime.of(19, 0), result.cells.first().start)
+    }
+
+    @Test
+    fun ambiguousMatchMustBeSelected() {
+        val tokens = fixture() + token("BALDEDDU LUCA", 0.1f, 0.4f, 0.17f)
+        val result = TableParser().extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
+        assertNull(result.selected)
+        assertTrue(ExtractionIssue.AMBIGUOUS_NAME in result.issues)
+        assertEquals(2, result.candidates.size)
+    }
+
+    @Test
+    fun missingYearRequiresConfirmationAndExplicitDateMismatchBlocks() {
+        val missing = fixture().map { it.copy(text = it.text.replace("-2026", "")) }
+        assertTrue(
+            ExtractionIssue.DATE_CONFIRMATION in
+                TableParser().extract(missing, EmployeeProfile("Luca Baldeddu"), monday).issues
+        )
+        assertFalse(
+            ExtractionIssue.DATE_CONFIRMATION in
+                TableParser()
+                    .extract(
+                        missing,
+                        EmployeeProfile("Luca Baldeddu"),
+                        monday,
+                        confirmedMonday = monday,
+                    )
+                    .issues
+        )
+        val wrong =
+            fixture().map { if (it.text == "5-ott-2026") it.copy(text = "6-ott-2026") else it }
+        assertTrue(
+            ExtractionIssue.INVALID_DATES in
+                TableParser().extract(wrong, EmployeeProfile("Luca Baldeddu"), monday).issues
+        )
+    }
+}
