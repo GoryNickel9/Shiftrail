@@ -1,9 +1,8 @@
 <resources>
-    <string name="app_name">Turni</string>
+    <string name="app_name">Shiftrail</string>
     <string name="default_event_title">Turno di lavoro</string>
     <string name="home">Home</string>
-    <string name="import_title">Porta i tuoi turni nel calendario</string>
-    <string name="local_note">La foto viene elaborata sul dispositivo. Controlla sempre i risultati prima di salvarli.</string>
+    <string name="local_note">La foto viene letta sul tuo dispositivo, anche senza connessione.</string>
     <string name="camera">Scatta foto</string>
     <string name="gallery">Importa foto</string>
     <string name="history">Storico</string>
@@ -49,7 +48,7 @@
     <string name="invalid_crop">Ritaglio non valido: evita angoli incrociati e seleziona una superficie più grande.</string>
     <string name="processing">Elaborazione locale…</string>
     <string name="review">Turni rilevati</string>
-    <string name="review_help">Verifica date e orari. Nessun evento è stato ancora salvato.</string>
+    <string name="review_help">Controlla solo le letture incerte. Nessun evento è stato ancora salvato.</string>
     <string name="duplicate_photo">Questa foto è già stata importata. Puoi controllarla e sincronizzarla di nuovo.</string>
     <string name="empty_ocr">OCR vuoto. Riprendi la foto con più luce, testo a fuoco e meno distanza.</string>
     <string name="name_not_found">Nome non trovato. Seleziona la tua riga o modifica gli alias.</string>
@@ -63,9 +62,8 @@
     <string name="select_row">Seleziona riga</string>
     <string name="origin">Mostra origine</string>
     <string name="overnight">Termina il giorno successivo</string>
-    <string name="check_ocr">OCR da controllare</string>
-    <string name="low_confidence">Revisione esplicita richiesta</string>
-    <string name="acknowledge">Ho verificato questa cella</string>
+    <string name="low_confidence">Controlla il contenuto nella foto, poi conferma o modifica.</string>
+    <string name="acknowledge">Ho controllato: è corretto</string>
     <string name="empty_cell">Cella vuota</string>
     <string name="unknown_cell">Contenuto non riconosciuto</string>
     <string name="unmapped_code">Sigla senza legenda: non verrà esportata</string>
@@ -94,7 +92,6 @@
     <string name="dst_error">Questo orario cade in un cambio di ora legale ed è inesistente o ambiguo. Correggilo esplicitamente prima di esportare.</string>
     <string name="week_label">Settimana %1$s</string>
     <string name="imported_at">Importata il %1$s</string>
-    <string name="event_id">Calendario %1$d · Evento %2$d</string>
     <string name="debug">OCR Debug</string>
     <string name="debug_help">Blu: token OCR. Verde: fascia della riga. Rosso: divisori dei giorni.</string>
     <string name="debug_stats">Token: %1$d · OCR: %2$d ms · Contrasto selezionato: %3$s</string>
@@ -103,7 +100,34 @@
     <string name="source_not_saved">Le immagini di origine sono disponibili soltanto durante la revisione.</string>
     <string name="save_photo">Conserva copia foto (scelta esplicita)</string>
     <string name="validation_error">Controlla nome, titolo, promemoria e colore.</string>
-    <string name="cancel_import">Annulla importazione</string>
     <string name="confidence_label">Punteggio lettura: %1$d/100</string>
     <string name="ocr_original_reading">Lettura OCR originale: %1$s</string>
+    <string name="step_photo">Foto</string>
+    <string name="step_review">Controllo</string>
+    <string name="step_calendar">Calendario</string>
+    <string name="import_progress">%1$d di 3 · %2$s</string>
+    <string name="brand_tagline">Dalla foto al calendario.</string>
+    <string name="profile_section">Il tuo profilo</string>
+    <string name="event_section">Eventi nel calendario</string>
+    <string name="advanced_section">Opzioni avanzate</string>
+    <string name="first_setup">Cominciamo dal tuo nome</string>
+    <string name="setup_button">Configura il profilo</string>
+    <string name="import_for">Importa per %1$s</string>
+    <string name="home_steps">Scatta o importa una foto. Controlla le letture incerte. Salva i turni nel tuo calendario.</string>
+    <string name="empty_upcoming">I prossimi turni compariranno qui dopo la prima importazione.</string>
+    <string name="ready_badge">Pronto</string>
+    <string name="verified_badge">Verificato</string>
+    <string name="review_badge">Da controllare</string>
+    <string name="unknown_badge">Da correggere</string>
+    <plurals name="review_count">
+        <item quantity="one">Da controllare: %1$d su %2$d giorno</item>
+        <item quantity="other">Da controllare: %1$d su %2$d giorni</item>
+    </plurals>
+    <string name="all_ready">Tutti i giorni sono pronti. Scegli il calendario per continuare.</string>
+    <string name="review_row_first">Seleziona la tua riga per continuare.</string>
+    <string name="cell_actions">Altre azioni per %1$s</string>
+    <string name="reading_details">Dettagli della lettura</string>
+    <string name="delete_cell_title">Eliminare questo giorno?</string>
+    <string name="delete_cell_note">Il giorno verrà escluso da questa importazione.</string>
+    <string name="cancel_short">Annulla</string>
 </resources>

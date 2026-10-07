@@ -2,12 +2,14 @@ package it.turni.app.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import it.turni.app.R
 import it.turni.app.data.MappingEntity
@@ -30,62 +32,102 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onSaved: () -> Unit) {
     var developer by rememberSaveable { mutableStateOf(state.settings.developer) }
     var mappingDialog by remember { mutableStateOf<MappingEntity?>(null) }
     var invalid by remember { mutableStateOf(false) }
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineMedium)
-        Text(stringResource(R.string.profile_help))
-        OutlinedTextField(
-            name,
-            { name = it },
-            label = { Text(stringResource(R.string.name)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            aliases,
-            { aliases = it },
-            label = { Text(stringResource(R.string.aliases)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            title,
-            { title = it },
-            label = { Text(stringResource(R.string.event_title)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            location,
-            { location = it },
-            label = { Text(stringResource(R.string.location)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            description,
-            { description = it },
-            label = { Text(stringResource(R.string.description)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            reminder,
-            { reminder = it },
-            label = { Text(stringResource(R.string.reminder)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            color,
-            { color = it },
-            label = { Text(stringResource(R.string.color)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row {
-            Switch(developer, { developer = it })
-            Text(stringResource(R.string.developer), Modifier.padding(12.dp))
+    var advanced by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().imePadding()) {
+        Column(
+            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineMedium)
+            Text(
+                stringResource(R.string.profile_section),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(stringResource(R.string.profile_help))
+            OutlinedTextField(
+                name,
+                { name = it },
+                label = { Text(stringResource(R.string.name)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                aliases,
+                { aliases = it },
+                label = { Text(stringResource(R.string.aliases)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            HorizontalDivider()
+            Text(
+                stringResource(R.string.event_section),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            OutlinedTextField(
+                title,
+                { title = it },
+                label = { Text(stringResource(R.string.event_title)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                location,
+                { location = it },
+                label = { Text(stringResource(R.string.location)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                description,
+                { description = it },
+                label = { Text(stringResource(R.string.description)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                reminder,
+                { reminder = it },
+                label = { Text(stringResource(R.string.reminder)) },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+            TextButton(onClick = { advanced = !advanced }) {
+                Text(stringResource(R.string.advanced_section))
+            }
+            if (advanced) {
+                OutlinedTextField(
+                    color,
+                    { color = it },
+                    label = { Text(stringResource(R.string.color)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row {
+                    Switch(developer, { developer = it })
+                    Text(stringResource(R.string.developer), Modifier.padding(12.dp))
+                }
+            }
+            HorizontalDivider()
+            Text(stringResource(R.string.legend), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.legend_help))
+            state.mappings.forEach { mapping ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(onClick = { mappingDialog = mapping }, Modifier.weight(1f)) {
+                        Text("${mapping.code} = ${mapping.meaning}")
+                    }
+                    TextButton(onClick = { vm.removeMapping(mapping.code) }) {
+                        Text(stringResource(R.string.delete))
+                    }
+                }
+            }
+            OutlinedButton(
+                onClick = {
+                    mappingDialog = MappingEntity("", "", CalendarBehavior.IGNORE.name, null, null)
+                }
+            ) {
+                Text(stringResource(R.string.add_code))
+            }
+            Text(stringResource(R.string.privacy), style = MaterialTheme.typography.bodySmall)
         }
-        if (invalid)
-            Text(stringResource(R.string.validation_error), color = MaterialTheme.colorScheme.error)
-        Button(
-            onClick = {
+        ActionFooter(
+            stringResource(R.string.save),
+            enabled = !state.busy,
+            note = if (invalid) stringResource(R.string.validation_error) else null,
+            action = {
                 val minutes = if (reminder.isBlank()) null else reminder.toIntOrNull()
                 val parsedColor =
                     if (color.isBlank()) null
@@ -111,31 +153,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onSaved: () -> Unit) {
                         onSaved,
                     )
             },
-            enabled = !state.busy,
-        ) {
-            Text(stringResource(R.string.save))
-        }
-        HorizontalDivider()
-        Text(stringResource(R.string.legend), style = MaterialTheme.typography.titleLarge)
-        Text(stringResource(R.string.legend_help))
-        state.mappings.forEach { mapping ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = { mappingDialog = mapping }) {
-                    Text("${mapping.code} = ${mapping.meaning}")
-                }
-                TextButton(onClick = { vm.removeMapping(mapping.code) }) {
-                    Text(stringResource(R.string.delete))
-                }
-            }
-        }
-        OutlinedButton(
-            onClick = {
-                mappingDialog = MappingEntity("", "", CalendarBehavior.IGNORE.name, null, null)
-            }
-        ) {
-            Text(stringResource(R.string.add_code))
-        }
-        Text(stringResource(R.string.privacy), style = MaterialTheme.typography.bodySmall)
+        )
     }
     mappingDialog?.let { mapping ->
         MappingDialog(

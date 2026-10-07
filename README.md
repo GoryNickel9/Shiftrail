@@ -1,17 +1,17 @@
-# Turni
+# Shiftrail
 
-App Android nativa che legge la tua riga da una foto del tabellone settimanale e prepara eventi nel calendario del dispositivo. L’utente verifica i risultati prima di salvarli. Il modello OCR latino è incluso nell’APK; foto e testo OCR vengono elaborati localmente.
+App Android nativa che legge la tua riga da una foto del tabellone settimanale e prepara eventi nel calendario del dispositivo. Le letture con punteggio almeno 90/100 proseguono senza conferma individuale; quelle incerte richiedono controllo. Il modello OCR latino è incluso nell’APK; foto e testo OCR vengono elaborati localmente.
 
 Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, coroutine, ViewModel/StateFlow e Navigation Compose. Nessun account dell’app, backend o API AI a pagamento.
 
-<img src="docs/images/home.png" alt="Home su Android 15" width="240"> <img src="docs/images/crop.png" alt="Crop della fixture sintetica" width="240"> <img src="docs/images/review.png" alt="Revisione dei turni riconosciuti" width="240">
+<img src="docs/images/shiftrail-home.png" alt="Home Shiftrail su Android 15" width="240"> <img src="docs/images/shiftrail-review-ready.png" alt="Revisione con letture pronte e pulsante fisso" width="240"> <img src="docs/images/shiftrail-review-large-font.png" alt="Revisione con caratteri al 160%" width="240">
 
 ## Utilizzo
 
 1. Apri **Impostazioni** e inserisci nome e alias, uno per riga. Configura titolo, luogo, descrizione e promemoria degli eventi.
 2. Scatta una foto o scegli un’immagine con il Photo Picker. Trascina i quattro angoli del crop mantenendo visibili nome, giorni e date.
 3. Controlla la riga scelta e le date. Se il nome è ambiguo, seleziona la riga; se l’anno manca, conferma la data del lunedì.
-4. Correggi, elimina o aggiungi celle. Usa **Mostra origine** per confrontare il contenuto. Le celle con confidenza inferiore al 70% richiedono conferma esplicita; quelle non riconosciute richiedono correzione o eliminazione.
+4. Correggi, elimina o aggiungi celle. Usa **Mostra origine** per confrontare il contenuto. Sotto 90/100 occorre una verifica esplicita; da 90/100 incluso non compare una conferma individuale. Le celle non riconosciute richiedono correzione o eliminazione.
 5. Scegli il calendario e verifica il piano di sincronizzazione. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
 
 `19-01` produce un evento dalle 19:00 alle 01:00 del giorno seguente. Numeri isolati come `6` non diventano turni. Le sigle non hanno un significato predefinito: la legenda locale decide se ignorarle, creare eventi intera giornata o usare orari personalizzati.
@@ -43,7 +43,7 @@ La CI esegue build debug, test JVM e lint. I test strumentati richiedono un disp
 ./gradlew connectedDebugAndroidTest
 ```
 
-`testdata/synthetic-roster.png` usa dipendenti fittizi e verifica il flusso OCR. Configura `Luca Baldeddu` per provarlo. I test verificano anche la versione ridotta e un altro tabellone con layout, dipendente, settimana e turni diversi. Abilita **Developer** per vedere token, celle e divisori.
+`testdata/synthetic-roster.png` usa dipendenti fittizi e verifica il flusso OCR. Configura `Luca Baldeddu` per provarlo. I test verificano anche la versione ridotta e un altro tabellone con layout, dipendente, settimana e turni diversi. Abilita **Developer** nelle opzioni avanzate per vedere token, celle e divisori.
 
 La versione 0.1.1 rilegge i tabelloni fitti tramite ritagli sovrapposti ingranditi, riconosce intestazioni inclinate e cerca le date sopra la prima riga dei dipendenti. Le letture discordanti degli orari diventano celle da correggere: **Mostra origine** consente il confronto con la foto e **Modifica** inserisce il valore corretto. Nomi, coordinate e orari delle foto segnalate non sono incorporati nel codice dell’app.
 
@@ -70,5 +70,7 @@ Questa versione gestisce una cella e un evento per giorno. Più turni separati n
 È stato scelto un progetto nuovo, senza fork né copia di codice applicativo. La ricerca è documentata in [docs/OPEN_SOURCE_RESEARCH.md](docs/OPEN_SOURCE_RESEARCH.md). I [sample ML Kit](https://github.com/googlesamples/mlkit) (Apache-2.0) sono stati consultati come riferimento; [Calendar Provider](https://developer.android.com/identity/providers/calendar-provider) e [ML Kit Android](https://developers.google.com/ml-kit/vision/text-recognition/v2/android) definiscono le API usate. AndroidX e Kotlin sono Apache-2.0; ML Kit e le dipendenze Google sono distribuiti secondo i termini Google. Vedi [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Documentazione: [architettura](docs/ARCHITECTURE.md), [pipeline OCR](docs/OCR_PIPELINE.md), [parser](docs/SHIFT_PARSER.md), [sincronizzazione](docs/CALENDAR_SYNC.md), [report verifiche](docs/IMPLEMENTATION_REPORT.md).
+
+La versione 0.2.0 introduce Shiftrail, l’immagine della home, la navigazione inferiore, il tema scuro e i pulsanti principali fissi. Identità e prompt dell’immagine sono in [BRANDING.md](docs/BRANDING.md); flusso e soglia sono in [UI_UX.md](docs/UI_UX.md).
 
 La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Le correzioni OCR sono documentate per [0.1.1](docs/OCR_FIX_0_1_1.md), [0.1.2](docs/OCR_FIX_0_1_2.md), [0.1.3](docs/OCR_FIX_0_1_3.md) e [0.1.4](docs/OCR_FIX_0_1_4.md).

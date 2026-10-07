@@ -11,6 +11,26 @@ class ParserTest {
     private val monday = LocalDate.of(2026, 10, 5)
 
     @Test
+    fun nativeOcrFloatScoresPreserveTheNinetyPercentBoundary() {
+        for ((nativeScore, expected, review) in
+            listOf(
+                Triple(0.90f, 0.90, false),
+                Triple(0.89f, 0.89, true),
+                Triple(0.89999f, 0.89999, true),
+            )) {
+            val tokens =
+                fixture().map { if (it.text == "19-01") it.copy(confidence = nativeScore) else it }
+            val cell =
+                TableParser()
+                    .extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
+                    .cells
+                    .first()
+            assertEquals(expected, cell.confidence, 0.0)
+            assertEquals(review, cell.needsReview)
+        }
+    }
+
+    @Test
     fun recoveredLettersAndRepeatedDigitsRequireSourceVerificationEvenAfterDateConfirmation() {
         for (raw in listOf("4 18:30-21I:30", "4 18:30-211:30")) {
             val tokens =

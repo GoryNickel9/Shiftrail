@@ -272,9 +272,11 @@ class TableParser(
                 filtered
                     .map { token ->
                         token.confidence
-                            ?.toDouble()
-                            ?.takeIf { it.isFinite() && it >= 0.0 }
-                            ?.coerceIn(0.0, 1.0) ?: 0.65
+                            ?.takeIf { it.isFinite() && it >= 0f }
+                            ?.coerceIn(0f, 1f)
+                            // Preserve the Float's canonical decimal value: 0.90f must not
+                            // become 0.899999976... when compared with the Double threshold.
+                            ?.let { it.toString().toDouble() } ?: 0.65
                     }
                     .minOrNull() ?: 0.65
             val association =

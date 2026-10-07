@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -43,21 +44,14 @@ fun TurniApp(vm: AppViewModel) {
         }
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: "home"
-    val colors =
-        lightColorScheme(
-            primary = Color(0xFF006C67),
-            secondary = Color(0xFF4A635F),
-            background = Color(0xFFF6FAF8),
-            surface = Color(0xFFF6FAF8),
-        )
-    MaterialTheme(colorScheme = colors) {
+    ShiftrailTheme {
         Scaffold(
             topBar = {
                 TopAppBar(
                     title = { Text(stringResource(R.string.app_name)) },
                     navigationIcon = {
                         if (route != "home")
-                            TextButton(
+                            IconButton(
                                 onClick = {
                                     if (route == "crop") {
                                         vm.clearImages()
@@ -66,7 +60,10 @@ fun TurniApp(vm: AppViewModel) {
                                 },
                                 enabled = !state.busy,
                             ) {
-                                Text(stringResource(R.string.back))
+                                Icon(
+                                    painterResource(R.drawable.ic_back),
+                                    stringResource(R.string.back),
+                                )
                             }
                     },
                     actions = {
@@ -78,11 +75,40 @@ fun TurniApp(vm: AppViewModel) {
                                 },
                                 enabled = !state.busy,
                             ) {
-                                Text(stringResource(R.string.cancel_import))
+                                Text(stringResource(R.string.cancel_short))
                             }
                     },
                 )
-            }
+            },
+            bottomBar = {
+                if (route in listOf("home", "history", "settings", "week")) {
+                    NavigationBar {
+                        listOf(
+                                Triple("home", R.string.home, R.drawable.ic_calendar),
+                                Triple("history", R.string.history, R.drawable.ic_history),
+                                Triple("settings", R.string.settings, R.drawable.ic_profile),
+                            )
+                            .forEach { (destination, label, icon) ->
+                                NavigationBarItem(
+                                    selected =
+                                        route == destination ||
+                                            (route == "week" && destination == "history"),
+                                    enabled = !state.busy,
+                                    onClick = {
+                                        if (route != destination)
+                                            nav.navigate(destination) {
+                                                popUpTo("home") { saveState = true }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                    },
+                                    icon = { Icon(painterResource(icon), null) },
+                                    label = { Text(stringResource(label)) },
+                                )
+                            }
+                    }
+                }
+            },
         ) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 if (state.loaded)
@@ -111,7 +137,6 @@ fun TurniApp(vm: AppViewModel) {
                                         )
                                 },
                                 settings = { nav.navigate("settings") },
-                                history = { nav.navigate("history") },
                             )
                         }
                         composable("settings") { SettingsScreen(state, vm) { nav.popBackStack() } }

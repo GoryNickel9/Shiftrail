@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter
 fun CalendarScreen(state: AppState, onChoose: (Long) -> Unit, onRetry: () -> Unit) {
     LazyColumn(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
+            ImportProgress(3)
             Text(
                 stringResource(R.string.choose_calendar),
                 style = MaterialTheme.typography.headlineMedium,
@@ -49,67 +50,73 @@ fun CalendarScreen(state: AppState, onChoose: (Long) -> Unit, onRetry: () -> Uni
 @Composable
 fun SyncScreen(state: AppState, vm: AppViewModel, synchronize: () -> Unit) {
     val plan = state.prepared ?: return
-    LazyColumn(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Text(
-                stringResource(R.string.sync_preview),
-                style = MaterialTheme.typography.headlineMedium,
-            )
-            Text(stringResource(R.string.sync_help))
-        }
-        items(plan.changes, key = { it.date.toString() }) { change ->
-            val title =
-                when (change.kind) {
-                    ChangeKind.INSERT -> R.string.insert_event
-                    ChangeKind.UPDATE -> R.string.update_event
-                    ChangeKind.UNCHANGED -> R.string.unchanged_event
-                    ChangeKind.MISSING -> R.string.missing_event
-                    ChangeKind.RECREATE -> R.string.recreate_event
-                }
-            Card(Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(12.dp)) {
-                    if (change.kind != ChangeKind.UNCHANGED)
-                        Checkbox(
-                            change.date in state.selectedChanges,
-                            { vm.toggleChange(change.date) },
-                        )
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(change.date.toString(), style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(title))
-                        val old = plan.saved.firstOrNull { it.date == change.date.toString() }
-                        if (old != null && change.kind != ChangeKind.UNCHANGED)
-                            Text(
-                                stringResource(
-                                    R.string.before,
-                                    old.code ?: "${old.startTime} → ${old.endTime}",
-                                )
+    Column(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                ImportProgress(3)
+                Text(
+                    stringResource(R.string.sync_preview),
+                    style = MaterialTheme.typography.headlineMedium,
+                )
+                Text(stringResource(R.string.sync_help))
+            }
+            items(plan.changes, key = { it.date.toString() }) { change ->
+                val title =
+                    when (change.kind) {
+                        ChangeKind.INSERT -> R.string.insert_event
+                        ChangeKind.UPDATE -> R.string.update_event
+                        ChangeKind.UNCHANGED -> R.string.unchanged_event
+                        ChangeKind.MISSING -> R.string.missing_event
+                        ChangeKind.RECREATE -> R.string.recreate_event
+                    }
+                Card(Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(12.dp)) {
+                        if (change.kind != ChangeKind.UNCHANGED)
+                            Checkbox(
+                                change.date in state.selectedChanges,
+                                { vm.toggleChange(change.date) },
                             )
-                        change.incoming?.let { incoming ->
-                            val formatter = DateTimeFormatter.ofPattern("dd/MM HH:mm")
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f),
+                        ) {
                             Text(
-                                stringResource(
-                                    R.string.after,
-                                    if (incoming.allDay) incoming.title
-                                    else
-                                        "${Instant.ofEpochMilli(incoming.startMillis).atZone(ZoneId.of(incoming.timezone)).format(formatter)} → ${Instant.ofEpochMilli(incoming.endMillis).atZone(ZoneId.of(incoming.timezone)).format(formatter)}",
-                                )
+                                change.date.toString(),
+                                style = MaterialTheme.typography.titleMedium,
                             )
+                            Text(stringResource(title))
+                            val old = plan.saved.firstOrNull { it.date == change.date.toString() }
+                            if (old != null && change.kind != ChangeKind.UNCHANGED)
+                                Text(
+                                    stringResource(
+                                        R.string.before,
+                                        old.code ?: "${old.startTime} → ${old.endTime}",
+                                    )
+                                )
+                            change.incoming?.let { incoming ->
+                                val formatter = DateTimeFormatter.ofPattern("dd/MM HH:mm")
+                                Text(
+                                    stringResource(
+                                        R.string.after,
+                                        if (incoming.allDay) incoming.title
+                                        else
+                                            "${Instant.ofEpochMilli(incoming.startMillis).atZone(ZoneId.of(incoming.timezone)).format(formatter)} → ${Instant.ofEpochMilli(incoming.endMillis).atZone(ZoneId.of(incoming.timezone)).format(formatter)}",
+                                    )
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-        item {
-            Button(
-                onClick = synchronize,
-                enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.sync_button))
-            }
-        }
+        ActionFooter(
+            stringResource(R.string.sync_button),
+            enabled = !state.busy,
+            action = synchronize,
+        )
     }
 }

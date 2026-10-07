@@ -7,8 +7,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import it.turni.app.R
 import it.turni.core.*
 import java.time.LocalDate
@@ -20,6 +24,7 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDe
     val extraction = state.extraction ?: return
     val result = extraction.table
     var editing by remember { mutableIntStateOf(-2) }
+    var deleting by remember { mutableIntStateOf(-1) }
     var source by remember { mutableStateOf<Box?>(null) }
     var monday by rememberSaveable {
         mutableStateOf(
@@ -37,165 +42,155 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDe
             ExtractionIssue.DATE_CONFIRMATION to R.string.date_confirmation,
             ExtractionIssue.INVALID_DATES to R.string.invalid_dates,
         )
-    LazyColumn(
-        Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Text(stringResource(R.string.review), style = MaterialTheme.typography.headlineMedium)
-            Text(stringResource(R.string.review_help))
-        }
-        if (state.duplicatePhoto)
+    val pending =
+        result.cells.count { it.type == CellType.UNKNOWN || (it.needsReview && !it.reviewed) }
+    val ready =
+        result.selected != null &&
+            result.issues.isEmpty() &&
+            result.cells.isNotEmpty() &&
+            pending == 0
+    Column(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             item {
+                ImportProgress(2)
                 Text(
-                    stringResource(R.string.duplicate_photo),
-                    color = MaterialTheme.colorScheme.primary,
+                    stringResource(R.string.review),
+                    Modifier.padding(top = 8.dp),
+                    style = MaterialTheme.typography.headlineMedium,
                 )
-            }
-        result.issues.forEach { issue ->
-            item {
-                Text(
-                    stringResource(issueResources.getValue(issue)),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        }
-        if (result.selected == null && result.columns.isNotEmpty()) {
-            item { Text(stringResource(R.string.select_row)) }
-            val candidates =
-                result.candidates.ifEmpty {
-                    TableParser().selectableRows(extraction.tokens, result.columns)
-                }
-            candidates.forEach { candidate ->
-                item {
-                    OutlinedButton(onClick = { vm.chooseRow(candidate) }, Modifier.fillMaxWidth()) {
-                        Text(candidate.label)
-                    }
-                }
-            }
-        }
-        if (
-            ExtractionIssue.DATE_CONFIRMATION in result.issues ||
-                ExtractionIssue.INVALID_DATES in result.issues
-        )
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        monday,
-                        { monday = it },
-                        label = { Text(stringResource(R.string.monday)) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Button(onClick = { vm.confirmMonday(monday) }) {
-                        Text(stringResource(R.string.confirm_dates))
-                    }
-                }
-            }
-        itemsIndexed(result.cells, key = { _, cell -> cell.date.toString() }) { index, cell ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                result.selected?.let {
                     Text(
-                        cell.date.format(
-                            DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", Locale.ITALIAN)
-                        ),
+                        it.label,
                         style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(top = 6.dp),
                     )
+                }
+                Text(
+                    stringResource(R.string.review_help),
+                    Modifier.padding(top = 6.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (state.duplicatePhoto)
+                item {
                     Text(
-                        when (cell.type) {
-                            CellType.WORK_SHIFT -> "${cell.start} → ${cell.end}"
-                            CellType.CODE -> cell.code.orEmpty()
-                            CellType.EMPTY -> stringResource(R.string.empty_cell)
-                            CellType.UNKNOWN ->
-                                "${stringResource(R.string.unknown_cell)}: ${cell.raw}"
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
+                        stringResource(R.string.duplicate_photo),
+                        color = MaterialTheme.colorScheme.primary,
                     )
-                    if (cell.endNextDay) Text(stringResource(R.string.overnight))
-                    cell.ocrOriginal?.let { original ->
+                }
+            result.issues.forEach { issue ->
+                item {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = MaterialTheme.shapes.small,
+                    ) {
                         Text(
-                            stringResource(R.string.ocr_original_reading, original),
-                            style = MaterialTheme.typography.bodySmall,
+                            stringResource(issueResources.getValue(issue)),
+                            Modifier.padding(14.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                         )
-                    }
-                    if (cell.type == CellType.UNKNOWN && cell.raw.contains(" / "))
-                        Text(
-                            stringResource(R.string.ocr_disagreement),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    if (cell.type == CellType.CODE && state.mappings.none { it.code == cell.code })
-                        Text(
-                            stringResource(R.string.unmapped_code),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    Text(
-                        stringResource(R.string.confidence_label, (cell.confidence * 100).toInt()),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    if (!cell.reviewed && cell.confidence < 0.9)
-                        Text(
-                            stringResource(
-                                if (cell.needsReview) R.string.low_confidence
-                                else R.string.check_ocr
-                            ),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    if (cell.needsReview && !cell.reviewed && cell.type != CellType.UNKNOWN)
-                        TextButton(onClick = { vm.acknowledge(index) }) {
-                            Text(stringResource(R.string.acknowledge))
-                        }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { editing = index }) {
-                            Text(stringResource(R.string.edit))
-                        }
-                        TextButton(onClick = { vm.removeCell(index) }) {
-                            Text(stringResource(R.string.delete))
-                        }
-                        if (cell.source != null)
-                            TextButton(
-                                onClick = {
-                                    val bitmap = state.analyzed
-                                    source =
-                                        if (bitmap != null) {
-                                            CellOcrPlanner.plan(
-                                                    extraction.tokens,
-                                                    cell,
-                                                    bitmap.width,
-                                                    bitmap.height,
-                                                )
-                                                ?.region ?: cell.source
-                                        } else cell.source
-                                }
-                            ) {
-                                Text(stringResource(R.string.origin))
-                            }
                     }
                 }
             }
-        }
-        if (result.selected != null)
-            item {
-                OutlinedButton(onClick = { editing = -1 }) { Text(stringResource(R.string.add)) }
+            if (result.selected == null && result.columns.isNotEmpty()) {
+                item { Text(stringResource(R.string.select_row)) }
+                val candidates =
+                    result.candidates.ifEmpty {
+                        TableParser().selectableRows(extraction.tokens, result.columns)
+                    }
+                candidates.forEach { candidate ->
+                    item {
+                        OutlinedButton(
+                            onClick = { vm.chooseRow(candidate) },
+                            Modifier.fillMaxWidth(),
+                        ) {
+                            Text(candidate.label)
+                        }
+                    }
+                }
             }
-        if (state.settings.developer)
-            item { TextButton(onClick = onDebug) { Text(stringResource(R.string.debug)) } }
-        item {
-            Button(
-                onClick = onCalendar,
-                enabled =
-                    result.selected != null &&
-                        result.issues.isEmpty() &&
-                        result.cells.isNotEmpty() &&
-                        result.cells.all { !it.needsReview || it.reviewed },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.continue_label))
+            if (
+                ExtractionIssue.DATE_CONFIRMATION in result.issues ||
+                    ExtractionIssue.INVALID_DATES in result.issues
+            )
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            monday,
+                            { monday = it },
+                            label = { Text(stringResource(R.string.monday)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                        )
+                        Button(onClick = { vm.confirmMonday(monday) }) {
+                            Text(stringResource(R.string.confirm_dates))
+                        }
+                    }
+                }
+            itemsIndexed(result.cells, key = { _, cell -> cell.date.toString() }) { index, cell ->
+                ReviewCellCard(
+                    cell,
+                    unmapped =
+                        cell.type == CellType.CODE &&
+                            state.mappings.none { TextNormalizer.normalize(it.code) == cell.code },
+                    onEdit = { editing = index },
+                    onDelete = { deleting = index },
+                    onAcknowledge = { vm.acknowledge(index) },
+                    onSource =
+                        if (cell.source == null || state.analyzed == null) null
+                        else {
+                            {
+                                val bitmap = state.analyzed
+                                source =
+                                    CellOcrPlanner.plan(
+                                            extraction.tokens,
+                                            cell,
+                                            bitmap.width,
+                                            bitmap.height,
+                                        )
+                                        ?.region ?: cell.source
+                            }
+                        },
+                )
             }
+            if (result.selected != null)
+                item {
+                    OutlinedButton(onClick = { editing = -1 }, Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.add))
+                    }
+                }
+            if (state.settings.developer)
+                item {
+                    TextButton(onClick = onDebug) { Text(stringResource(R.string.debug)) }
+                }
         }
+        ActionFooter(
+            stringResource(R.string.continue_label),
+            enabled = ready && !state.busy,
+            note =
+                when {
+                    result.selected == null -> stringResource(R.string.review_row_first)
+                    result.issues.isNotEmpty() -> stringResource(R.string.review_required)
+                    result.cells.isEmpty() -> stringResource(R.string.no_shifts)
+                    pending > 0 ->
+                        pluralStringResource(
+                            R.plurals.review_count,
+                            result.cells.size,
+                            pending,
+                            result.cells.size,
+                        )
+                    else -> stringResource(R.string.all_ready)
+                },
+            action = onCalendar,
+        )
     }
     if (editing != -2) {
-        val cell = result.cells.getOrNull(editing)
         EditCellDialog(
-            cell,
+            result.cells.getOrNull(editing),
             defaultDate =
                 state.confirmedMonday ?: result.cells.firstOrNull()?.date ?: LocalDate.now(),
             dismiss = { editing = -2 },
@@ -206,7 +201,157 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDe
             } else false
         }
     }
+    if (deleting >= 0)
+        AlertDialog(
+            onDismissRequest = { deleting = -1 },
+            title = { Text(stringResource(R.string.delete_cell_title)) },
+            text = { Text(stringResource(R.string.delete_cell_note)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.removeCell(deleting)
+                        deleting = -1
+                    }
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleting = -1 }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
     source?.let { box -> state.analyzed?.let { SourceImage(it, box) { source = null } } }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReviewCellCard(
+    cell: ShiftCell,
+    unmapped: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onAcknowledge: () -> Unit,
+    onSource: (() -> Unit)?,
+) {
+    val pending = cell.type == CellType.UNKNOWN || (cell.needsReview && !cell.reviewed)
+    var menu by remember { mutableStateOf(false) }
+    var details by rememberSaveable(cell.date) { mutableStateOf(false) }
+    val status =
+        when {
+            cell.type == CellType.UNKNOWN -> R.string.unknown_badge
+            pending -> R.string.review_badge
+            cell.reviewed -> R.string.verified_badge
+            else -> R.string.ready_badge
+        }
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        cell.date.format(
+                            DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", Locale.ITALIAN)
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Surface(
+                        color =
+                            if (pending) MaterialTheme.colorScheme.errorContainer
+                            else MaterialTheme.colorScheme.secondaryContainer,
+                        shape = MaterialTheme.shapes.small,
+                    ) {
+                        Text(
+                            stringResource(status),
+                            Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color =
+                                if (pending) MaterialTheme.colorScheme.onErrorContainer
+                                else MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
+                }
+                Box {
+                    val description = stringResource(R.string.cell_actions, cell.date.toString())
+                    IconButton(
+                        onClick = { menu = true },
+                        Modifier.semantics { contentDescription = description },
+                    ) {
+                        Text("⋮", fontSize = 24.sp)
+                    }
+                    DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete)) },
+                            onClick = {
+                                menu = false
+                                onDelete()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.reading_details)) },
+                            onClick = {
+                                menu = false
+                                details = !details
+                            },
+                        )
+                    }
+                }
+            }
+            Text(
+                when (cell.type) {
+                    CellType.WORK_SHIFT -> "${cell.start} → ${cell.end}"
+                    CellType.CODE -> cell.code.orEmpty()
+                    CellType.EMPTY -> stringResource(R.string.empty_cell)
+                    CellType.UNKNOWN -> "${stringResource(R.string.unknown_cell)}: ${cell.raw}"
+                },
+                style =
+                    if (cell.type == CellType.UNKNOWN) MaterialTheme.typography.bodyLarge
+                    else MaterialTheme.typography.headlineSmall,
+            )
+            if (cell.endNextDay)
+                Text(stringResource(R.string.overnight), style = MaterialTheme.typography.bodySmall)
+            if (unmapped)
+                Text(
+                    stringResource(R.string.unmapped_code),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            if (pending || details) {
+                cell.ocrOriginal?.let {
+                    Text(
+                        stringResource(R.string.ocr_original_reading, it),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Text(
+                    stringResource(R.string.confidence_label, cell.readingScore),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            if (cell.type == CellType.UNKNOWN && cell.raw.contains(" / "))
+                Text(
+                    stringResource(R.string.ocr_disagreement),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            else if (pending)
+                Text(
+                    stringResource(R.string.low_confidence),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
+                onSource?.let { TextButton(onClick = it) { Text(stringResource(R.string.origin)) } }
+            }
+            if (pending && cell.type != CellType.UNKNOWN)
+                FilledTonalButton(
+                    onClick = onAcknowledge,
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.acknowledge))
+                }
+        }
+    }
 }
 
 @Composable

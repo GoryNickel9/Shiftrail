@@ -1,5 +1,6 @@
 package it.turni.core
 
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -73,12 +74,27 @@ data class ShiftCell(
         get() = start != null && end != null && end < start
 
     val needsReview
-        get() = confidence < 0.70 || type == CellType.UNKNOWN
+        get() =
+            !confidence.isFinite() ||
+                confidence < AUTO_ACCEPT_CONFIDENCE ||
+                type == CellType.UNKNOWN
+
+    /** Truncate decimal scores without binary multiplication artifacts or rounding up to 90. */
+    val readingScore: Int
+        get() =
+            if (confidence.isFinite())
+                BigDecimal.valueOf(confidence.coerceIn(0.0, 1.0)).movePointRight(2).toInt()
+            else 0
 
     val endDate
         get() = if (endNextDay) date.plusDays(1) else date
 
     fun signature() = listOf(type, date, start, end, code).joinToString("|")
+
+    companion object {
+        /** Inclusive threshold for a valid reading to continue without an acknowledgement. */
+        const val AUTO_ACCEPT_CONFIDENCE = 0.90
+    }
 }
 
 data class RowCandidate(val label: String, val box: Box, val score: Double)

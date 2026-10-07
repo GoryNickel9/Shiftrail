@@ -64,6 +64,7 @@ fun CropScreen(bitmap: Bitmap?, onAnalyze: (List<Corner>) -> Unit, onError: (Str
         Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        ImportProgress(1)
         Text(stringResource(R.string.crop), style = MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.crop_help))
         BoxWithConstraints(
