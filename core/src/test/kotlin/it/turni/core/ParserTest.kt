@@ -206,12 +206,30 @@ class ParserTest {
 
     @Test
     fun codesAndInvalidTimes() {
-        listOf("X", "FE", "PIR", "A.G.", "CORSO").forEach {
+        listOf("X", "x", " X ").forEach {
             assertEquals(CellType.CODE, ShiftParser.parse(it, monday).type)
+            assertEquals("X", ShiftParser.parse(it, monday).code)
         }
-        listOf("6", "25-30", "12:60-18", "12-12", "12-18-20", "12-18 note", "24-01").forEach {
-            assertEquals(it, CellType.UNKNOWN, ShiftParser.parse(it, monday).type)
-        }
+        listOf(
+                "FE",
+                "PIR",
+                "A.G.",
+                "CORSO",
+                "XX",
+                "X X",
+                "X.",
+                "×",
+                "6",
+                "25-30",
+                "12:60-18",
+                "12-12",
+                "12-18-20",
+                "12-18 note",
+                "24-01",
+            )
+            .forEach {
+                assertEquals(it, CellType.UNKNOWN, ShiftParser.parse(it, monday).type)
+            }
         assertEquals(CellType.EMPTY, ShiftParser.parse("", monday).type)
         assertEquals(monday.plusDays(1), ShiftParser.parse("19-00", monday).endDate)
     }
@@ -264,8 +282,10 @@ class ParserTest {
         assertEquals(7, result.cells.size)
         assertEquals("19-01", result.cells[0].raw)
         assertTrue(result.cells[0].endNextDay)
-        assertEquals("A.G.", result.cells[6].code)
-        assertTrue(result.cells.all { it.confidence >= 0.9 })
+        assertEquals(CellType.UNKNOWN, result.cells[3].type)
+        assertEquals(CellType.UNKNOWN, result.cells[6].type)
+        assertEquals("A.G.", result.cells[6].raw)
+        assertTrue(result.cells.filter { it.type != CellType.UNKNOWN }.all { it.confidence >= 0.9 })
         assertEquals(monday.plusDays(6), result.cells[6].date)
     }
 
@@ -368,7 +388,7 @@ class ParserTest {
 
     @Test
     fun mergedCountersAroundCodesRequireReview() {
-        for ((raw, code) in listOf("3 FE" to "FE", "PIR 6" to "PIR", "4 A.G. 8" to "A.G.")) {
+        for ((raw, code) in listOf("3 X" to "X", "X 6" to "X", "4 X 8" to "X")) {
             val tokens =
                 fixture().filterNot { it.text == "19-01" || it.text == "6" } +
                     token(raw, 0.29f, 0.3f)

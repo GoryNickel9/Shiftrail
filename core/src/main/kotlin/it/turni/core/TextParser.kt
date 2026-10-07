@@ -107,7 +107,7 @@ object ShiftParser {
     const val MAX_TIME_DIGITS = 8
     private val timeRange =
         Regex("^(\\d{1,2})(?:[:.](\\d{2}))?\\s*[-–—]\\s*(\\d{1,2})(?:[:.](\\d{2}))?$")
-    private val codePattern = Regex("^[A-Z][A-Z. ]{0,23}$")
+    const val REST_CODE = "X"
 
     fun parse(
         raw: String,
@@ -151,7 +151,7 @@ object ShiftParser {
                     source = source,
                 )
         }
-        if (codePattern.matches(normalized))
+        if (normalized == REST_CODE)
             return ShiftCell(
                 date,
                 raw,

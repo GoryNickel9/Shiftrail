@@ -6,7 +6,7 @@ Il modulo Android usa adattatori distinti: `ImageProcessor`, `LocalScheduleExtra
 
 Room v1 esporta lo schema nel repository e impone una relazione settimana→turni con cancellazione a cascata e unicità dipendente/data/calendario. Le date sono ISO, gli orari ISO locali; le conversioni istante/fuso avvengono alla preparazione degli eventi. Non si usa destructive migration.
 
-La navigazione è Home, Impostazioni, Camera, Crop, Review, Calendari, Sync, Risultato, Storico e Debug. Il risultato OCR non sopravvive alla morte del processo: l’utente deve importare nuovamente la foto. Profilo, impostazioni e turni sincronizzati restano in Room.
+La navigazione è Home, Impostazioni, Camera, Crop, Review, Calendari, Sync e Risultato. Impostazioni modifica soltanto il nome e cognome. Il risultato OCR non sopravvive alla morte del processo: l’utente deve importare nuovamente la foto. Profilo, impostazioni e turni sincronizzati restano in Room. Le tabelle precedenti restano compatibili, ma gli alias e le legende non partecipano alle nuove importazioni.
 
 ## Decisioni
 

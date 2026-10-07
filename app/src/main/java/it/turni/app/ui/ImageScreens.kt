@@ -7,8 +7,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -152,67 +150,4 @@ fun SourceImage(bitmap: Bitmap, source: Box, dismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.back)) } },
     )
-}
-
-@Composable
-fun DebugScreen(state: AppState) {
-    val bitmap = state.analyzed ?: return
-    val extraction = state.extraction ?: return
-    Column(
-        Modifier.padding(20.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(stringResource(R.string.debug), style = MaterialTheme.typography.headlineSmall)
-        Text(stringResource(R.string.debug_help))
-        Text(
-            stringResource(
-                R.string.debug_stats,
-                extraction.tokens.size,
-                extraction.elapsedMillis,
-                extraction.enhanced.toString(),
-            )
-        )
-        Text(stringResource(R.string.debug_tiled, extraction.tiled.toString()))
-        Box(Modifier.fillMaxWidth().aspectRatio(bitmap.width.toFloat() / bitmap.height)) {
-            Image(bitmap.asImageBitmap(), stringResource(R.string.debug), Modifier.fillMaxSize())
-            Canvas(Modifier.fillMaxSize()) {
-                extraction.tokens.forEach { token ->
-                    drawRect(
-                        Color.Blue,
-                        Offset(token.box.left * size.width, token.box.top * size.height),
-                        androidx.compose.ui.geometry.Size(
-                            (token.box.right - token.box.left) * size.width,
-                            token.box.height * size.height,
-                        ),
-                        style = Stroke(1.5f),
-                    )
-                }
-                extraction.table.cells
-                    .mapNotNull { it.source }
-                    .ifEmpty { listOfNotNull(extraction.table.rowBand) }
-                    .forEach { box ->
-                        drawRect(
-                            Color.Green.copy(alpha = 0.25f),
-                            Offset(box.left * size.width, box.top * size.height),
-                            androidx.compose.ui.geometry.Size(
-                                (box.right - box.left) * size.width,
-                                box.height * size.height,
-                            ),
-                        )
-                    }
-                extraction.table.columns.forEach { column ->
-                    drawLine(
-                        Color.Red,
-                        Offset(column.left * size.width, 0f),
-                        Offset(column.left * size.width, size.height),
-                        2f,
-                    )
-                }
-            }
-        }
-        extraction.table.selected?.let { Text(it.label) }
-        extraction.table.cells.forEach { cell ->
-            Text("${cell.date}: ${cell.raw} (${(cell.confidence * 100).toInt()}%)")
-        }
-    }
 }

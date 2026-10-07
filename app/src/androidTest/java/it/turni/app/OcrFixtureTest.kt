@@ -218,7 +218,9 @@ class OcrFixtureTest {
         assertEquals(LocalTime.of(1, 0), result.table.cells[0].end)
         assertEquals(LocalTime.of(23, 45), result.table.cells[2].start)
         assertTrue(result.table.cells[2].endNextDay)
-        assertEquals("FE", result.table.cells[3].code)
+        assertEquals(CellType.UNKNOWN, result.table.cells[3].type)
+        assertTrue(result.table.cells[3].raw.contains("FE"))
+        assertTrue(result.table.cells[3].needsReview)
         bitmap.recycle()
     }
 }

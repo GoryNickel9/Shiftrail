@@ -1,8 +1,8 @@
-# UI e revisione — Shiftrail 0.2.0
+# UI e revisione — Shiftrail 0.2.1
 
 ## Flusso
 
-Home, Storico e Impostazioni sono raggiungibili dalla navigazione inferiore. La prima apertura presenta la configurazione del nome; con un profilo salvato, la home mostra cattura e importazione, seguite dai prossimi turni. L’immagine comunica il passaggio dal tabellone al calendario.
+Home e Impostazioni sono raggiungibili dalla navigazione inferiore. Impostazioni presenta un solo campo, Nome e cognome, con Salva fisso in basso. La prima apertura presenta la configurazione del nome; con un profilo salvato, la home mostra cattura e importazione, seguite dai prossimi turni. L’immagine comunica il passaggio dal tabellone al calendario.
 
 L’importazione indica tre passaggi: Foto, Controllo, Calendario. Crop e OCR restano locali. La revisione mostra dipendente, problemi delle intestazioni e schede ordinate per data. Gli stati sono testuali: Pronto, Verificato, Da controllare, Da correggere. Il colore rafforza lo stato, senza essere l’unico segnale.
 
@@ -20,7 +20,7 @@ I dettagli del punteggio rimangono visibili nelle schede incerte; per quelle pro
 
 Continua, Salva impostazioni e Applica al calendario sono in un footer fisso mentre il contenuto scorre. Le azioni Modifica e Mostra origine usano `FlowRow`, così vanno a capo invece di uscire dalla scheda. Eliminazione e dettagli sono nel menu del giorno; l’eliminazione chiede una conferma per evitare un’esclusione accidentale. Il pulsante di ritorno ha un’etichetta accessibile. Le azioni principali hanno altezza minima di 48–52 dp.
 
-Le impostazioni separano profilo, eventi, legenda e opzioni avanzate. Colore e debug sono espandibili. Il promemoria usa una tastiera numerica. La modalità scura segue le preferenze di Android. I dettagli tecnici degli identificatori calendario non occupano le schede dello storico.
+Storico e la schermata di diagnostica sono rimossi. La modalità scura segue le preferenze di Android. La revisione visualizza `X` come Giorno di riposo e informa che verrà salvato come evento di intera giornata. Le altre lettere richiedono correzione; non possono essere confermate come orari o sigle.
 
 ## Verifica
 

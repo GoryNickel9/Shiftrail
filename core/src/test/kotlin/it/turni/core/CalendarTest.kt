@@ -56,20 +56,67 @@ class CalendarTest {
     }
 
     @Test
-    fun unmappedCodesIgnoredAndAllDayUsesUtc() {
-        val cell = ShiftParser.parse("FE", monday)
-        assertNull(EventFactory.create(cell, emptyList(), options, ZoneId.of("Europe/Rome")))
-        val event =
+    fun restCreatesFixedAllDayEventEvenWithAnOldCustomLegend() {
+        val cell = ShiftParser.parse("X", monday)
+        val expected = EventFactory.create(cell, emptyList(), options, ZoneId.of("Europe/Rome"))!!
+        assertEquals("Giorno di riposo", expected.title)
+        assertTrue(expected.allDay)
+        assertEquals("UTC", expected.timezone)
+        assertEquals(
+            monday.atStartOfDay().toInstant(java.time.ZoneOffset.UTC).toEpochMilli(),
+            expected.startMillis,
+        )
+        assertEquals(86400000L, expected.endMillis - expected.startMillis)
+        for (behavior in CalendarBehavior.entries) assertEquals(
+            expected,
             EventFactory.create(
                 cell,
-                listOf(CodeMapping("FE", "Ferie", CalendarBehavior.ALL_DAY)),
+                listOf(
+                    CodeMapping(
+                        "X",
+                        "Vecchia legenda",
+                        behavior,
+                        java.time.LocalTime.of(9, 0),
+                        java.time.LocalTime.of(17, 0),
+                    )
+                ),
                 options,
                 ZoneId.of("Europe/Rome"),
-            )!!
-        assertTrue(event.allDay)
-        assertEquals("UTC", event.timezone)
-        assertEquals(86400000L, event.endMillis - event.startMillis)
-        assertEquals("Ferie", event.title)
+            ),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun oldUnsupportedCodeCannotExportEvenIfMarkedReviewed() {
+        EventFactory.create(
+            ShiftCell(monday, "FE", CellType.CODE, code = "FE", reviewed = true),
+            listOf(CodeMapping("FE", "Ferie", CalendarBehavior.ALL_DAY)),
+            options,
+            ZoneId.of("Europe/Rome"),
+        )
+    }
+
+    @Test
+    fun restKeepsTheCalendarDateAcrossDaylightSavingChanges() {
+        for (date in listOf(LocalDate.of(2026, 3, 29), LocalDate.of(2026, 10, 25))) {
+            val cell = ShiftParser.parse("X", date)
+            val rome = EventFactory.create(cell, emptyList(), options, ZoneId.of("Europe/Rome"))!!
+            val newYork =
+                EventFactory.create(cell, emptyList(), options, ZoneId.of("America/New_York"))!!
+            assertEquals(rome, newYork)
+            assertEquals(
+                date,
+                java.time.Instant.ofEpochMilli(rome.startMillis)
+                    .atZone(java.time.ZoneOffset.UTC)
+                    .toLocalDate(),
+            )
+            assertEquals(
+                date.plusDays(1),
+                java.time.Instant.ofEpochMilli(rome.endMillis)
+                    .atZone(java.time.ZoneOffset.UTC)
+                    .toLocalDate(),
+            )
+        }
     }
 
     @Test

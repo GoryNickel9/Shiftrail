@@ -8,13 +8,13 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 ## Utilizzo
 
-1. Apri **Impostazioni** e inserisci nome e alias, uno per riga. Configura titolo, luogo, descrizione e promemoria degli eventi.
+1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone.
 2. Scatta una foto o scegli un’immagine con il Photo Picker. Trascina i quattro angoli del crop mantenendo visibili nome, giorni e date.
 3. Controlla la riga scelta e le date. Se il nome è ambiguo, seleziona la riga; se l’anno manca, conferma la data del lunedì.
 4. Correggi, elimina o aggiungi celle. Usa **Mostra origine** per confrontare il contenuto. Sotto 90/100 occorre una verifica esplicita; da 90/100 incluso non compare una conferma individuale. Le celle non riconosciute richiedono correzione o eliminazione.
 5. Scegli il calendario e verifica il piano di sincronizzazione. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
 
-`19-01` produce un evento dalle 19:00 alle 01:00 del giorno seguente. Numeri isolati come `6` non diventano turni. Le sigle non hanno un significato predefinito: la legenda locale decide se ignorarle, creare eventi intera giornata o usare orari personalizzati.
+`19-01` produce un evento dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e produce un evento di intera giornata intitolato **Giorno di riposo**. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
 
 ## Build
 
@@ -31,7 +31,7 @@ Su Windows usa `gradlew.bat`. L’APK è `app/build/outputs/apk/debug/app-debug.
 
 In questo ambiente Windows Java restituisce `Unable to establish loopback connection` sulle socket AF_UNIX. `scripts/verify-windows.ps1 -Jdk "C:\Program Files\Java\jdk-21"` applica un workaround soltanto ai processi figli, esegue build/test/lint e ripristina le variabili d’ambiente. Non serve su un ambiente sano.
 
-L’APK debug è firmato con una chiave di sviluppo. Una distribuzione pubblica richiede una chiave release privata e la verifica delle policy del canale di distribuzione.
+Il pacchetto consegnato è `artifacts/Shiftrail-0.2.1.apk` ed è firmato con la stessa chiave di sviluppo delle versioni precedenti. Una distribuzione pubblica richiede una chiave release privata e la verifica delle policy del canale di distribuzione.
 
 ## Architettura e test
 
@@ -43,7 +43,7 @@ La CI esegue build debug, test JVM e lint. I test strumentati richiedono un disp
 ./gradlew connectedDebugAndroidTest
 ```
 
-`testdata/synthetic-roster.png` usa dipendenti fittizi e verifica il flusso OCR. Configura `Luca Baldeddu` per provarlo. I test verificano anche la versione ridotta e un altro tabellone con layout, dipendente, settimana e turni diversi. Abilita **Developer** nelle opzioni avanzate per vedere token, celle e divisori.
+`testdata/synthetic-roster.png` usa dipendenti fittizi e verifica il flusso OCR. Configura `Luca Baldeddu` per provarlo. I test verificano anche la versione ridotta e un altro tabellone con layout, dipendente, settimana e turni diversi. Le sigle diverse da `X` presenti nelle fixture verificano il rifiuto delle lettere non ammesse.
 
 La versione 0.1.1 rilegge i tabelloni fitti tramite ritagli sovrapposti ingranditi, riconosce intestazioni inclinate e cerca le date sopra la prima riga dei dipendenti. Le letture discordanti degli orari diventano celle da correggere: **Mostra origine** consente il confronto con la foto e **Modifica** inserisce il valore corretto. Nomi, coordinate e orari delle foto segnalate non sono incorporati nel codice dell’app.
 
@@ -72,5 +72,7 @@ Questa versione gestisce una cella e un evento per giorno. Più turni separati n
 Documentazione: [architettura](docs/ARCHITECTURE.md), [pipeline OCR](docs/OCR_PIPELINE.md), [parser](docs/SHIFT_PARSER.md), [sincronizzazione](docs/CALENDAR_SYNC.md), [report verifiche](docs/IMPLEMENTATION_REPORT.md).
 
 La versione 0.2.0 introduce Shiftrail, l’immagine della home, la navigazione inferiore, il tema scuro e i pulsanti principali fissi. Identità e prompt dell’immagine sono in [BRANDING.md](docs/BRANDING.md); flusso e soglia sono in [UI_UX.md](docs/UI_UX.md).
+
+La versione 0.2.1 elimina Storico e la schermata di diagnostica, limita Impostazioni al nome e cognome e interpreta soltanto `X` come Giorno di riposo. Gli eventi di riposo sono intera giornata; gli altri turni mantengono orari e identità. Le vecchie legende non influenzano più l’importazione. Dettagli e verifiche sono in [UI_RELEASE_0_2_1.md](docs/UI_RELEASE_0_2_1.md).
 
 La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Le correzioni OCR sono documentate per [0.1.1](docs/OCR_FIX_0_1_1.md), [0.1.2](docs/OCR_FIX_0_1_2.md), [0.1.3](docs/OCR_FIX_0_1_3.md) e [0.1.4](docs/OCR_FIX_0_1_4.md).

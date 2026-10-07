@@ -2,7 +2,7 @@
 
 ## Nome e riga
 
-La normalizzazione rimuove accenti, uniforma maiuscole e spazi. Il confronto ordina le parole e usa `1 - distanzaLevenshtein / lunghezzaMassima`. Nome e alias competono; la soglia è 0,76. Due candidati con distanza di punteggio inferiore a 0,08 richiedono scelta manuale. Non viene usato substring matching: un cognome condiviso non identifica il dipendente senza un alias esplicito.
+La normalizzazione rimuove accenti, uniforma maiuscole e spazi. Il confronto ordina le parole e usa `1 - distanzaLevenshtein / lunghezzaMassima`; la soglia è 0,76. Due candidati con distanza di punteggio inferiore a 0,08 richiedono scelta manuale. Non viene usato substring matching. L’app usa soltanto il nome e cognome inseriti; gli alias conservati dalle vecchie versioni non partecipano alla ricerca. L’API del parser mantiene il parametro alias per compatibilità.
 
 I token dei nomi sono quelli a sinistra del confine del primo giorno e sotto l’intestazione. Si raggruppano per coordinata verticale relativa all’altezza dei box. La fascia del dipendente termina al punto medio fra i nomi sopra e sotto. In assenza di vicini si usa l’altezza del nome. Se il match fallisce, la UI propone le righe leggibili nell’area dei nomi.
 
@@ -26,7 +26,7 @@ Il pattern accetta due ore separate da trattino, con minuti opzionali separati d
 
 Dalla versione 0.1.4, `OcrShiftRecovery` propone anche un solo cambiamento su una lettura OCR invalida: sostituzione o rimozione di `O`, `I`, `L`, `|`, oppure rimozione di una cifra ripetuta adiacente in un gruppo di esattamente tre cifre. Le proposte devono soddisfare l’intera grammatica. Se le trasformazioni producono valori diversi, rimangono alternative UNKNOWN; se producono un solo valore, la cella conserva il testo OCR originale e richiede verifica esplicita. Non si tagliano cifre arbitrarie per rientrare nel limite di otto. Input oltre 64 caratteri e letture con `/` non vengono recuperati. Il parser manuale non applica questi cambiamenti.
 
-Sigle alfabetiche e punti diventano CODE senza significato dedotto. Vuoto diventa EMPTY; il resto UNKNOWN. Gli eventi per CODE dipendono soltanto dalla legenda salvata.
+Solo `X`, normalizzata anche da `x`, diventa CODE con significato fisso di riposo. FE, CORSO, A.G., XX e altre lettere diventano UNKNOWN e richiedono modifica o esclusione. Vuoto diventa EMPTY. `X` produce un evento di intera giornata intitolato Giorno di riposo, con mezzanotte UTC e fine esclusiva del giorno successivo. Le vecchie legende non possono alterare questa regola.
 
 ## Confidenza
 

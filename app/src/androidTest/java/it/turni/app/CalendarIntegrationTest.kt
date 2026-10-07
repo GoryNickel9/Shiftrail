@@ -117,6 +117,26 @@ class CalendarIntegrationTest {
                     .single()
                     .calendarEventId,
             )
+            val rest = sync.prepare("employee", monday, id, "rest", cells("X"), events("X"))
+            assertEquals(ChangeKind.UPDATE, rest.changes.single().kind)
+            sync.commit(rest, setOf(monday))
+            val restEvent = provider.event(eventId)!!
+            assertEquals("Giorno di riposo", restEvent.title)
+            assertTrue(restEvent.allDay)
+            assertEquals(
+                monday.atStartOfDay().toInstant(java.time.ZoneOffset.UTC).toEpochMilli(),
+                restEvent.start,
+            )
+            assertEquals(86400000L, restEvent.end - restEvent.start)
+            val sameRest = sync.prepare("employee", monday, id, "rest", cells("X"), events("X"))
+            assertEquals(ChangeKind.UNCHANGED, sameRest.changes.single().kind)
+            sync.commit(sameRest, emptySet())
+            val workAgain =
+                sync.prepare("employee", monday, id, "work", cells("18-21"), events("18-21"))
+            assertEquals(ChangeKind.UPDATE, workAgain.changes.single().kind)
+            sync.commit(workAgain, setOf(monday))
+            assertFalse(provider.event(eventId)!!.allDay)
+            assertEquals("Turno test", provider.event(eventId)!!.title)
             val missing = sync.prepare("employee", monday, id, "hash3", cells(""), emptyList())
             assertEquals(ChangeKind.MISSING, missing.changes.single().kind)
             sync.commit(missing, emptySet())

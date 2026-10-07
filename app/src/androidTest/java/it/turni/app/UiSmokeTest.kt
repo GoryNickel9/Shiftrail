@@ -1,7 +1,9 @@
 package it.turni.app
 
 import android.graphics.Color
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -23,14 +25,14 @@ class UiSmokeTest {
                 .fetchSemanticsNodes()
                 .isNotEmpty()
         }
-        assertArtworkVisibleWithoutScrolling()
+        assertSimplifiedHome()
         compose.onNodeWithText("Impostazioni").performClick()
-        compose.onNodeWithText("Nome e cognome da cercare").assertIsDisplayed()
-        compose.onNodeWithText("Alias OCR, uno per riga").assertIsDisplayed()
-        compose.onNodeWithText("Nome e cognome da cercare").performTextClearance()
-        compose.onNodeWithText("Nome e cognome da cercare").performTextInput("Luca Baldeddu")
-        compose.onNodeWithText("Alias OCR, uno per riga").performTextClearance()
-        compose.onNodeWithText("Alias OCR, uno per riga").performTextInput("BALDEDDU")
+        compose.onNodeWithText("Nome e cognome").assertIsDisplayed()
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(1)
+        compose.onNodeWithText("Alias OCR, uno per riga").assertDoesNotExist()
+        compose.onNodeWithText("Titolo evento").assertDoesNotExist()
+        compose.onNodeWithText("Nome e cognome").performTextClearance()
+        compose.onNodeWithText("Nome e cognome").performTextInput("Luca Baldeddu")
         compose.onNodeWithText("Salva").assertIsDisplayed().performClick()
         compose.waitUntil(10000) {
             compose
@@ -39,7 +41,7 @@ class UiSmokeTest {
                 .isNotEmpty()
         }
         compose.onNodeWithText("Importa per Luca Baldeddu").assertIsDisplayed()
-        assertArtworkVisibleWithoutScrolling()
+        assertSimplifiedHome()
         compose.activityRule.scenario.recreate()
         compose.waitUntil(10000) {
             compose
@@ -48,10 +50,12 @@ class UiSmokeTest {
                 .isNotEmpty()
         }
         compose.onNodeWithText("Importa per Luca Baldeddu").assertIsDisplayed()
-        assertArtworkVisibleWithoutScrolling()
+        assertSimplifiedHome()
     }
 
-    private fun assertArtworkVisibleWithoutScrolling() {
+    private fun assertSimplifiedHome() {
+        compose.onNodeWithText("Storico").assertDoesNotExist()
+        compose.onNodeWithText("Shiftrail").assertIsDisplayed()
         // Inspect the real Android framebuffer: an Image node can exist while nothing is drawn.
         compose.onNodeWithTag("home_illustration").assertIsDisplayed()
         compose.waitUntil(15000) {

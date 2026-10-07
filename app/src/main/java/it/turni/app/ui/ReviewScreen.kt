@@ -20,7 +20,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDebug: () -> Unit) {
+fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit) {
     val extraction = state.extraction ?: return
     val result = extraction.table
     var editing by remember { mutableIntStateOf(-2) }
@@ -134,9 +134,6 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDe
             itemsIndexed(result.cells, key = { _, cell -> cell.date.toString() }) { index, cell ->
                 ReviewCellCard(
                     cell,
-                    unmapped =
-                        cell.type == CellType.CODE &&
-                            state.mappings.none { TextNormalizer.normalize(it.code) == cell.code },
                     onEdit = { editing = index },
                     onDelete = { deleting = index },
                     onAcknowledge = { vm.acknowledge(index) },
@@ -162,10 +159,6 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDe
                     OutlinedButton(onClick = { editing = -1 }, Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.add))
                     }
-                }
-            if (state.settings.developer)
-                item {
-                    TextButton(onClick = onDebug) { Text(stringResource(R.string.debug)) }
                 }
         }
         ActionFooter(
@@ -227,7 +220,6 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDe
 @Composable
 private fun ReviewCellCard(
     cell: ShiftCell,
-    unmapped: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onAcknowledge: () -> Unit,
@@ -301,7 +293,7 @@ private fun ReviewCellCard(
             Text(
                 when (cell.type) {
                     CellType.WORK_SHIFT -> "${cell.start} → ${cell.end}"
-                    CellType.CODE -> cell.code.orEmpty()
+                    CellType.CODE -> stringResource(R.string.rest_day)
                     CellType.EMPTY -> stringResource(R.string.empty_cell)
                     CellType.UNKNOWN -> "${stringResource(R.string.unknown_cell)}: ${cell.raw}"
                 },
@@ -311,9 +303,9 @@ private fun ReviewCellCard(
             )
             if (cell.endNextDay)
                 Text(stringResource(R.string.overnight), style = MaterialTheme.typography.bodySmall)
-            if (unmapped)
+            if (cell.type == CellType.CODE)
                 Text(
-                    stringResource(R.string.unmapped_code),
+                    stringResource(R.string.rest_day_note),
                     style = MaterialTheme.typography.bodySmall,
                 )
             if (pending || details) {

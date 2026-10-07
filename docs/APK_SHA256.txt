@@ -1,1 +1,1 @@
-e3ba85cc91c980d5500f03c18f3f6ba226e1ac878e52d4fbbc9f2efd07cecd36  app/build/outputs/apk/debug/app-debug.apk
+0efd76cdada247f4325ffa51b0955c3711823640699bb462cf1c619a7d1e6419  artifacts/Shiftrail-0.2.1.apk

@@ -67,7 +67,7 @@ fun TurniApp(vm: AppViewModel) {
                             }
                     },
                     actions = {
-                        if (route in listOf("crop", "review", "calendars", "sync", "debug"))
+                        if (route in listOf("crop", "review", "calendars", "sync"))
                             TextButton(
                                 onClick = {
                                     vm.clearImages()
@@ -81,18 +81,15 @@ fun TurniApp(vm: AppViewModel) {
                 )
             },
             bottomBar = {
-                if (route in listOf("home", "history", "settings", "week")) {
+                if (route in listOf("home", "settings")) {
                     NavigationBar {
                         listOf(
                                 Triple("home", R.string.home, R.drawable.ic_calendar),
-                                Triple("history", R.string.history, R.drawable.ic_history),
                                 Triple("settings", R.string.settings, R.drawable.ic_profile),
                             )
                             .forEach { (destination, label, icon) ->
                                 NavigationBarItem(
-                                    selected =
-                                        route == destination ||
-                                            (route == "week" && destination == "history"),
+                                    selected = route == destination,
                                     enabled = !state.busy,
                                     onClick = {
                                         if (route != destination)
@@ -184,7 +181,6 @@ fun TurniApp(vm: AppViewModel) {
                                             )
                                         )
                                 },
-                                onDebug = { nav.navigate("debug") },
                             )
                         }
                         composable("calendars") {
@@ -202,13 +198,6 @@ fun TurniApp(vm: AppViewModel) {
                         composable("result") {
                             ResultScreen(state.syncCount ?: 0) { nav.popBackStack("home", false) }
                         }
-                        composable("history") {
-                            HistoryScreen(state.weeks) { week ->
-                                vm.history(week) { nav.navigate("week") }
-                            }
-                        }
-                        composable("week") { SavedWeekScreen(state.historyShifts) }
-                        composable("debug") { DebugScreen(state) }
                     }
                 if (state.busy || !state.loaded)
                     Box(

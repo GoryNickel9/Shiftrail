@@ -24,10 +24,7 @@ data class AppState(
     val error: String? = null,
     val profile: ProfileEntity? = null,
     val settings: SettingsEntity = SettingsEntity(),
-    val mappings: List<MappingEntity> = emptyList(),
-    val weeks: List<WeekEntity> = emptyList(),
     val upcoming: List<ShiftEntity> = emptyList(),
-    val historyShifts: List<ShiftEntity> = emptyList(),
     val image: Bitmap? = null,
     val analyzed: Bitmap? = null,
     val hash: String = "",
@@ -47,7 +44,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val extractor: ScheduleExtractor = LocalScheduleExtractor(images)
     private val mutable = MutableStateFlow(AppState())
     val state = mutable.asStateFlow()
-    private var historyJob: Job? = null
     private var upcomingJob: Job? = null
 
     init {
@@ -60,7 +56,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     settings =
                         dao.settings()
                             ?: SettingsEntity(title = app.getString(R.string.default_event_title)),
-                    mappings = dao.mappings(),
                 )
             }
             profile?.let { watch(it.id) }
@@ -68,11 +63,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun watch(employee: String) {
-        historyJob?.cancel()
         upcomingJob?.cancel()
-        historyJob = viewModelScope.launch {
-            dao.weeks(employee).collect { value -> mutable.update { it.copy(weeks = value) } }
-        }
         upcomingJob = viewModelScope.launch {
             dao.upcoming(employee, LocalDate.now().toString()).collect { value ->
                 mutable.update { it.copy(upcoming = value) }
@@ -119,40 +110,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         mutable.update { it.copy(error = message) }
     }
 
-    fun saveSettings(name: String, aliases: String, settings: SettingsEntity, onSaved: () -> Unit) =
-        launchWork {
-            require(name.isNotBlank() && name.length <= 160 && aliases.length <= 2000)
-            require(
-                settings.title.isNotBlank() &&
-                    (settings.reminderMinutes == null || settings.reminderMinutes in 0..10080)
+    fun saveName(name: String, onSaved: () -> Unit) = launchWork {
+        require(name.isNotBlank() && name.trim().length <= 160)
+        val profile =
+            ProfileEntity(
+                mutable.value.profile?.id ?: UUID.randomUUID().toString(),
+                name.trim(),
+                "",
             )
-            val profile =
-                ProfileEntity(
-                    mutable.value.profile?.id ?: UUID.randomUUID().toString(),
-                    name.trim(),
-                    aliases.lines().filter { it.isNotBlank() }.joinToString("\n"),
-                )
-            dao.saveProfile(profile)
-            dao.saveSettings(settings)
-            mutable.update { it.copy(profile = profile, settings = settings) }
-            watch(profile.id)
-            onSaved()
-        }
-
-    fun saveMapping(mapping: MappingEntity) = launchWork {
-        require(mapping.code.isNotBlank() && mapping.meaning.isNotBlank())
-        val domain = mapping.domain()
-        require(
-            domain.behavior != CalendarBehavior.CUSTOM ||
-                (domain.start != null && domain.end != null && domain.start != domain.end)
-        )
-        dao.saveMapping(mapping.copy(code = TextNormalizer.normalize(mapping.code)))
-        mutable.update { it.copy(mappings = dao.mappings()) }
-    }
-
-    fun removeMapping(code: String) = launchWork {
-        dao.removeMapping(code)
-        mutable.update { it.copy(mappings = dao.mappings()) }
+        dao.saveProfile(profile)
+        mutable.update { it.copy(profile = profile) }
+        watch(profile.id)
+        onSaved()
     }
 
     fun loadImage(uri: Uri, capturedFile: java.io.File? = null, onLoaded: () -> Unit) = launchWork {
@@ -183,7 +152,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             extractor.extract(
                 ImageInput(
                     rectified,
-                    EmployeeProfile(profile.name, profile.aliases.lines()),
+                    EmployeeProfile(profile.name),
                     LocalDate.now(),
                 )
             )
@@ -221,7 +190,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             TableParser()
                 .extract(
                     old.tokens,
-                    EmployeeProfile(profile.name, profile.aliases.lines()),
+                    EmployeeProfile(profile.name),
                     LocalDate.now(),
                     row,
                     monday,
@@ -322,7 +291,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             result.cells.mapNotNull {
                 EventFactory.create(
                     it,
-                    state.mappings.map(MappingEntity::domain),
+                    emptyList(),
                     EventOptions(
                         state.settings.title,
                         state.settings.location,
@@ -381,11 +350,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         clearTemporaryFiles()
         onDone()
-    }
-
-    fun history(week: WeekEntity, onLoaded: () -> Unit) = launchWork {
-        mutable.update { it.copy(historyShifts = dao.shifts(week.id)) }
-        onLoaded()
     }
 
     fun clearImages() {

@@ -40,6 +40,46 @@ class ReviewUiTest {
     @get:Rule val compose = createComposeRule()
 
     @Test
+    fun xIsRestAndOtherLettersRequireCorrection() {
+        val date = LocalDate.of(2026, 11, 16)
+        val table =
+            ExtractionResult(
+                selected = RowCandidate("NERI MARTA", Box(0f, 0f, 0.2f, 0.1f), 1.0),
+                cells = listOf(ShiftParser.parse("X", date, 0.90)),
+            )
+        val state =
+            mutableStateOf(AppState(extraction = ExtractedSchedule(emptyList(), table, false, 0)))
+        val application =
+            InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
+                as TurniApplication
+        val vm = AppViewModel(application)
+        val store = ViewModelStore().apply { put("rest-test", vm) }
+        try {
+            compose.setContent {
+                ShiftrailTheme(darkTheme = false) { ReviewScreen(state.value, vm, {}) }
+            }
+            compose.onNodeWithText("Giorno di riposo").assertIsDisplayed()
+            compose.onNodeWithText("Ho controllato: è corretto").assertDoesNotExist()
+            compose.onNodeWithText("Continua").assertIsEnabled()
+            compose.runOnIdle {
+                state.value =
+                    state.value.copy(
+                        extraction =
+                            state.value.extraction!!.copy(
+                                table =
+                                    table.copy(cells = listOf(ShiftParser.parse("FE", date, 1.0)))
+                            )
+                    )
+            }
+            compose.onNodeWithText("Da correggere").assertIsDisplayed()
+            compose.onNodeWithText("Ho controllato: è corretto").assertDoesNotExist()
+            compose.onNodeWithText("Continua").assertIsNotEnabled()
+        } finally {
+            compose.runOnIdle { store.clear() }
+        }
+    }
+
+    @Test
     fun ninetyAndAboveContinueWithoutCellConfirmation() {
         val date = LocalDate.of(2026, 11, 16)
         val table =
@@ -58,7 +98,7 @@ class ReviewUiTest {
         try {
             compose.setContent {
                 ShiftrailTheme(darkTheme = false) {
-                    ReviewScreen(state.value, vm, { continued = true }, {})
+                    ReviewScreen(state.value, vm, { continued = true })
                 }
             }
             compose.onNodeWithText("Ho controllato: è corretto").assertDoesNotExist()
@@ -112,7 +152,7 @@ class ReviewUiTest {
                 ShiftrailTheme(darkTheme = false) {
                     val density = LocalDensity.current
                     CompositionLocalProvider(LocalDensity provides Density(density.density, 1.6f)) {
-                        Box(Modifier.width(320.dp)) { ReviewScreen(state, vm, {}, {}) }
+                        Box(Modifier.width(320.dp)) { ReviewScreen(state, vm, {}) }
                     }
                 }
             }
@@ -170,7 +210,7 @@ class ReviewUiTest {
         try {
             compose.setContent {
                 ShiftrailTheme {
-                    ReviewScreen(state.value, vm, onCalendar = { continued = true }, onDebug = {})
+                    ReviewScreen(state.value, vm, onCalendar = { continued = true })
                 }
             }
             compose.onNodeWithText("Continua").assertIsNotEnabled()

@@ -4,6 +4,8 @@
 
 La preparazione converte date/orari locali nel fuso del dispositivo. Per gli eventi intera giornata usa mezzanotte UTC e fine esclusiva al giorno successivo, come richiesto dal provider. Nei cambi DST `getValidOffsets` deve produrre esattamente un offset; zero o due offset bloccano l’esportazione. Il programma non sceglie silenziosamente l’ora di un overlap.
 
+`X` genera sempre un evento di intera giornata intitolato **Giorno di riposo**. Il titolo e il comportamento non dipendono dalle vecchie legende. La reimportazione mantiene l’ID dell’evento; un passaggio da turno a riposo, o viceversa, viene proposto come aggiornamento. Altre lettere sono rifiutate dal parser e dal generatore degli eventi.
+
 Room usa ID logici basati su dipendente, data e calendario. Ogni evento include un marker SHA-256 nella descrizione. Prima di sincronizzare si legge l’evento associato e, se necessario, si cerca il marker. L’evento deve appartenere ancora al calendario e mantenere il marker; altrimenti la scrittura viene bloccata. Marker duplicati richiedono controllo manuale.
 
 `SyncPlanner` restituisce INSERT, UPDATE, UNCHANGED, MISSING o RECREATE. Il confronto usa tempi, contenuto, titolo, luogo, descrizione e opzioni. UPDATE mantiene l’ID esistente. MISSING viene mostrato e non selezionato automaticamente. Un evento rimosso nel calendario può essere ricreato, previa conferma.

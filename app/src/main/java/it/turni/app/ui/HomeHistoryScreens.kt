@@ -21,8 +21,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import it.turni.app.R
 import it.turni.app.data.*
-import java.time.Instant
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -169,42 +167,6 @@ private fun ShiftSummary(shift: ShiftEntity) {
             )
             if (shift.endNextDay) Text(stringResource(R.string.overnight))
         }
-    }
-}
-
-@Composable
-fun HistoryScreen(weeks: List<WeekEntity>, onWeek: (WeekEntity) -> Unit) {
-    LazyColumn(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Text(stringResource(R.string.history), style = MaterialTheme.typography.headlineMedium)
-        }
-        if (weeks.isEmpty()) item { Text(stringResource(R.string.no_shifts)) }
-        items(weeks, key = { it.id }) { week ->
-            Card(onClick = { onWeek(week) }, Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        stringResource(R.string.week_label, week.weekStart),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        stringResource(
-                            R.string.imported_at,
-                            Instant.ofEpochMilli(week.importedAt)
-                                .atZone(ZoneId.systemDefault())
-                                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SavedWeekScreen(shifts: List<ShiftEntity>) {
-    LazyColumn(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text(stringResource(R.string.source_not_saved)) }
-        items(shifts, key = { it.id }) { ShiftSummary(it) }
     }
 }
 
