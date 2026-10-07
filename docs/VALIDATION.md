@@ -21,3 +21,5 @@ Il benchmark usa 254 token, trenta righe, sette colonne, cento iterazioni di war
 Prima di distribuire una release, provare su smartphone fisico una foto reale autorizzata: nome con alias, prospettiva, intestazioni piccole, importazione dalla galleria, cattura/flash, permessi negati, revisione, calendario Google del dispositivo, secondo import e turno modificato. Verificare separatamente un dispositivo senza Google Play Services. Nessuna precisione percentuale su foto reali viene dichiarata.
 
 Per la versione 0.1.1: 28 test JVM e 10 test Android passati, inclusa la regressione privata facoltativa. I dettagli del caso, le conferme manuali ancora necessarie e i limiti della verifica sono in [OCR_FIX_0_1_1.md](OCR_FIX_0_1_1.md). Il controllo su foto privata non misura le prestazioni e non sostituisce la verifica su tabelloni mai usati durante lo sviluppo.
+
+Per la versione 0.1.2: 31 test JVM e 11 test Android distinti passati. Il nuovo test della revisione è stato rieseguito dopo aver corretto lo scorrimento della lista nel test. Risultati, recupero dei contatori e limiti sono in [OCR_FIX_0_1_2.md](OCR_FIX_0_1_2.md).

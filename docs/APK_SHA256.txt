@@ -1,1 +1,1 @@
-47e77f6e02d073363a45b5bdb770170d2ed8fc65fe404a2e0923869bd455059d  app/build/outputs/apk/debug/app-debug.apk
+92e0a8a9590887b4c84fdf6dc497e71107f612572651434ebea4a9c26a752e67  app/build/outputs/apk/debug/app-debug.apk

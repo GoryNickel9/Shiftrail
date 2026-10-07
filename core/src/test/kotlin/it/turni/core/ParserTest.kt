@@ -3,6 +3,7 @@ package it.turni.core
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -147,6 +148,110 @@ class ParserTest {
         tokens += token("01", 0.305f, 0.3f, 0.02f)
         val result = TableParser().extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
         assertEquals(LocalTime.of(19, 0), result.cells.first().start)
+    }
+
+    @Test
+    fun countersAroundFragmentedOrMergedTimesRequireReview() {
+        val variants =
+            listOf(
+                listOf("4", "21:15", "-", "03:45"),
+                listOf("21:15", "-", "03:45", "6"),
+                listOf("4", "21:15", "-", "03:45", "6"),
+                listOf("4 21:15-03:45"),
+                listOf("21:15-03:45 6"),
+                listOf("4 21:15-03:45 6"),
+            )
+        for (parts in variants) {
+            val tokens =
+                fixture().filterNot { it.text == "19-01" || it.text == "6" } +
+                    parts.mapIndexed { i, part -> token(part, 0.25f + i * 0.015f, 0.3f, 0.012f) }
+            val cell =
+                TableParser()
+                    .extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
+                    .cells
+                    .first()
+            assertEquals(parts.toString(), CellType.WORK_SHIFT, cell.type)
+            assertEquals(LocalTime.of(21, 15), cell.start)
+            assertEquals(LocalTime.of(3, 45), cell.end)
+            assertTrue(cell.endNextDay)
+            assertTrue(parts.toString(), cell.needsReview)
+            assertFalse(cell.reviewed)
+            val confirmed =
+                TableParser()
+                    .extract(
+                        tokens,
+                        EmployeeProfile("Luca Baldeddu"),
+                        monday,
+                        confirmedMonday = monday,
+                    )
+                    .cells
+                    .first()
+            assertEquals(cell.signature(), confirmed.signature())
+            assertTrue(confirmed.needsReview)
+            val error =
+                assertThrows(IllegalArgumentException::class.java) {
+                    EventFactory.create(
+                        confirmed,
+                        emptyList(),
+                        EventOptions("Turno"),
+                        ZoneId.of("Europe/Rome"),
+                    )
+                }
+            assertEquals("REVIEW_REQUIRED", error.message)
+            assertNotNull(
+                EventFactory.create(
+                    confirmed.copy(reviewed = true),
+                    emptyList(),
+                    EventOptions("Turno"),
+                    ZoneId.of("Europe/Rome"),
+                )
+            )
+        }
+    }
+
+    @Test
+    fun counterCleanupDoesNotGuessFromInvalidOrMultipleIntervals() {
+        val variants =
+            listOf(
+                "4 25-03",
+                "4 12-12",
+                "4 21:15-03:45 note",
+                "4 21:15-03:45 / 20-01",
+                "21:15-03:45 6 20-01",
+                "4",
+                "100 21:15-03:45",
+            )
+        for (raw in variants) {
+            val tokens =
+                fixture().filterNot { it.text == "19-01" || it.text == "6" } +
+                    token(raw, 0.29f, 0.3f)
+            val cell =
+                TableParser()
+                    .extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
+                    .cells
+                    .first()
+            assertEquals(raw, CellType.UNKNOWN, cell.type)
+            assertEquals(raw, cell.raw)
+            assertTrue(cell.needsReview)
+        }
+        assertEquals(CellType.UNKNOWN, ShiftParser.parse("4 21:15-03:45", monday).type)
+    }
+
+    @Test
+    fun mergedCountersAroundCodesRequireReview() {
+        for ((raw, code) in listOf("3 FE" to "FE", "PIR 6" to "PIR", "4 A.G. 8" to "A.G.")) {
+            val tokens =
+                fixture().filterNot { it.text == "19-01" || it.text == "6" } +
+                    token(raw, 0.29f, 0.3f)
+            val cell =
+                TableParser()
+                    .extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
+                    .cells
+                    .first()
+            assertEquals(raw, CellType.CODE, cell.type)
+            assertEquals(code, cell.code)
+            assertTrue(cell.needsReview)
+        }
     }
 
     @Test

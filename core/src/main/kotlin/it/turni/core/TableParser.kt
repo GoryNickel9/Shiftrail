@@ -8,6 +8,27 @@ class TableParser(
     private val matchThreshold: Double = 0.76,
     private val ambiguityMargin: Double = 0.08,
 ) {
+    private val counter = Regex("^\\d{1,2}$")
+
+    /** Recover only one complete reading after removing whitespace-separated edge counters. */
+    private fun withoutEdgeCounters(raw: String, date: LocalDate): String? {
+        if (ShiftParser.parse(raw, date).type != CellType.UNKNOWN) return null
+        val parts = raw.trim().split(Regex("\\s+"))
+        val leading = parts.takeWhile { counter.matches(it) }.size
+        val trailing = parts.takeLastWhile { counter.matches(it) }.size
+        val readings = mutableMapOf<String, String>()
+        for (left in 0..leading) {
+            for (right in 0..trailing) {
+                if (left + right == 0 || left + right >= parts.size) continue
+                val text = parts.subList(left, parts.size - right).joinToString(" ")
+                val parsed = ShiftParser.parse(text, date)
+                if (parsed.type == CellType.WORK_SHIFT || parsed.type == CellType.CODE)
+                    readings.putIfAbsent(parsed.signature(), text)
+            }
+        }
+        return readings.values.singleOrNull()
+    }
+
     private fun rows(tokens: List<OcrToken>): List<List<OcrToken>> {
         val rows = mutableListOf<MutableList<OcrToken>>()
         for (token in tokens.sortedBy { it.centerY }) {
@@ -257,13 +278,15 @@ class TableParser(
             // Standalone counters have no shift separator; exclude them before joining split OCR
             // elements.
             val filtered = cellTokens.filterNot {
-                Regex("^\\d{1,2}$").matches(it.text.trim()) &&
+                counter.matches(it.text.trim()) &&
                     cellTokens.any { t ->
                         ShiftParser.parse(t.text, date).type == CellType.WORK_SHIFT ||
                             ShiftParser.parse(t.text, date).type == CellType.CODE
                     }
             }
-            val raw = filtered.sortedBy { it.box.left }.joinToString(" ") { it.text }
+            val joined = filtered.sortedBy { it.box.left }.joinToString(" ") { it.text }
+            val recovered = withoutEdgeCounters(joined, date)
+            val raw = recovered ?: joined
             val ocr =
                 filtered
                     .mapNotNull { it.confidence?.toDouble() }
@@ -280,7 +303,8 @@ class TableParser(
                         0.2 * association +
                         0.15 * dateQuality +
                         0.15 * syntax)
-                    .coerceIn(0.0, 1.0)
+                    // Recovery from fragmented/merged OCR requires an explicit source check.
+                    .coerceIn(0.0, if (recovered != null) 0.65 else 1.0)
             ShiftParser.parse(
                 raw,
                 date,

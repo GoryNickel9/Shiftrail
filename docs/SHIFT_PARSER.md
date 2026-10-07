@@ -20,6 +20,8 @@ I formati data includono `5-ott-2026`, `05/10`, `05-10`, `5 OCT`, `05 OTT`. Le d
 
 Si leggono i token nella fascia della riga e nell’intervallo della colonna, ordinati da sinistra a destra. I numeri isolati ausiliari vengono esclusi quando nella stessa colonna esiste già un orario completo o una sigla. Un numero solo resta UNKNOWN e non può essere esportato. Elementi separati `19`, `-`, `01` vengono ricomposti se non c’è un’altra cella valida.
 
+Dalla versione 0.1.2, se il testo ricomposto resta UNKNOWN, il parser verifica anche contatori numerici ai margini. Può rimuovere soltanto numeri di una o due cifre separati da spazi, prima o dopo il contenuto. Deve restare una sola lettura completa e valida. Questo copre sia elementi OCR separati sia un elemento che unisce contatore e orario. Il recupero ha confidenza massima 0,65 e richiede conferma esplicita; confermare le date non conferma l’orario. Due intervalli, note o valori invalidi restano UNKNOWN. Il parser usato per la modifica manuale continua a richiedere l’intero testo valido.
+
 Il pattern accetta due ore separate da trattino, con minuti opzionali separati da `:` o `.`. Ore 0–23, minuti 0–59. Il match riguarda l’intera cella; testo extra e più intervalli non vengono ignorati. Inizio uguale a fine è ambiguo e viene rifiutato. Fine inferiore a inizio significa giorno seguente; fine `00:00` segue la stessa regola. `19-01` e `23:45-5:45` durano sei ore nel calendario locale in assenza di cambio DST.
 
 Sigle alfabetiche e punti diventano CODE senza significato dedotto. Vuoto diventa EMPTY; il resto UNKNOWN. Gli eventi per CODE dipendono soltanto dalla legenda salvata.
