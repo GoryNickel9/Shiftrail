@@ -14,6 +14,8 @@ Se una cella UNKNOWN resta illeggibile nel crop stretto, viene tentata una lettu
 
 Se l’intestazione resta incompleta, si rilegge una fascia calcolata dai box dei giorni trovati. Questa fascia usa ritagli orizzontali ingranditi con meno righe di testo. Il confronto finale conserva anche le letture discordanti tra l’immagine originale e quella con contrasto.
 
+Le celle recuperate dalla grammatica vengono comunque rilette tramite i ritagli: una proposta sintatticamente valida non deve impedire un ulteriore tentativo sui pixel. Se la proposta resta nel risultato finale, conserva il testo OCR originale in memoria e richiede verifica esplicita. Le proposte con più valori possibili rimangono UNKNOWN. Le date non aumentano il punteggio delle cifre.
+
 Debug mostra token blu, celle verdi e separatori rossi, insieme all’indicazione del percorso per ritagli. **Mostra origine** usa gli stessi box del testo e margini per mostrare i pixel del bitmap rettificato senza enhancement. L’originale completo è visibile nel crop e può essere esportato soltanto con scelta esplicita. Nessuna foto è inclusa nel backup.
 
 Le letture aggiuntive aumentano latenza e RAM. L’app misura il tempo OCR+parser con il clock monotono, mostrato in Debug. Un target di pochi secondi su smartphone fisico deve ancora essere misurato. Foto sfocate, ombre marcate e prospettiva residua richiedono nuova acquisizione o correzione manuale.

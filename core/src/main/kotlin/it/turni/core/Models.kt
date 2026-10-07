@@ -67,6 +67,7 @@ data class ShiftCell(
     val confidence: Double = 1.0,
     val source: Box? = null,
     val reviewed: Boolean = false,
+    val ocrOriginal: String? = null,
 ) {
     val endNextDay
         get() = start != null && end != null && end < start

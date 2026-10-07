@@ -111,6 +111,12 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDe
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     if (cell.endNextDay) Text(stringResource(R.string.overnight))
+                    cell.ocrOriginal?.let { original ->
+                        Text(
+                            stringResource(R.string.ocr_original_reading, original),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                     if (cell.type == CellType.UNKNOWN && cell.raw.contains(" / "))
                         Text(
                             stringResource(R.string.ocr_disagreement),

@@ -30,7 +30,7 @@ class ReviewUiTest {
         val monday = LocalDate.of(2026, 11, 16)
         val cells =
             listOf(
-                ShiftParser.parse("21:15-03:45", monday, 0.65),
+                ShiftParser.parse("21:15-03:45", monday, 0.65).copy(ocrOriginal = "4 21I:15-03:45"),
                 ShiftParser.parse("20-01 / 20-03", monday.plusDays(1)),
             )
         val reviewedCells =
@@ -76,6 +76,11 @@ class ReviewUiTest {
             }
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Continua"))
             compose.onNodeWithText("Continua").assertIsNotEnabled()
+            compose
+                .onNode(hasScrollToIndexAction())
+                .performScrollToNode(hasText("Lettura OCR originale: 4 21I:15-03:45"))
+            compose.onNodeWithText("Lettura OCR originale: 4 21I:15-03:45").assertExists()
+            compose.onNodeWithText("Punteggio lettura: 65/100").assertExists()
             compose.runOnIdle {
                 state.value =
                     state.value.copy(

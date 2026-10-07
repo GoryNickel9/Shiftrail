@@ -104,6 +104,7 @@ object ItalianDateParser {
 }
 
 object ShiftParser {
+    const val MAX_TIME_DIGITS = 8
     private val timeRange =
         Regex("^(\\d{1,2})(?:[:.](\\d{2}))?\\s*[-–—]\\s*(\\d{1,2})(?:[:.](\\d{2}))?$")
     private val codePattern = Regex("^[A-Z][A-Z. ]{0,23}$")
@@ -117,7 +118,13 @@ object ShiftParser {
         val normalized = TextNormalizer.normalize(raw)
         if (normalized.isEmpty())
             return ShiftCell(date, raw, CellType.EMPTY, confidence = confidence, source = source)
-        val match = timeRange.matchEntire(normalized)
+        val match =
+            if (
+                normalized.count { it in '0'..'9' } <= MAX_TIME_DIGITS &&
+                    normalized.none { it.isLetter() }
+            )
+                timeRange.matchEntire(normalized)
+            else null
         if (match != null) {
             val start = runCatching {
                 LocalTime.of(

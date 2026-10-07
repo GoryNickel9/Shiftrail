@@ -10,25 +10,6 @@ class TableParser(
 ) {
     private val counter = Regex("^\\d{1,2}$")
 
-    /** Recover only one complete reading after removing whitespace-separated edge counters. */
-    private fun withoutEdgeCounters(raw: String, date: LocalDate): String? {
-        if (ShiftParser.parse(raw, date).type != CellType.UNKNOWN) return null
-        val parts = raw.trim().split(Regex("\\s+"))
-        val leading = parts.takeWhile { counter.matches(it) }.size
-        val trailing = parts.takeLastWhile { counter.matches(it) }.size
-        val readings = mutableMapOf<String, String>()
-        for (left in 0..leading) {
-            for (right in 0..trailing) {
-                if (left + right == 0 || left + right >= parts.size) continue
-                val text = parts.subList(left, parts.size - right).joinToString(" ")
-                val parsed = ShiftParser.parse(text, date)
-                if (parsed.type == CellType.WORK_SHIFT || parsed.type == CellType.CODE)
-                    readings.putIfAbsent(parsed.signature(), text)
-            }
-        }
-        return readings.values.singleOrNull()
-    }
-
     private fun rows(tokens: List<OcrToken>): List<List<OcrToken>> {
         val rows = mutableListOf<MutableList<OcrToken>>()
         for (token in tokens.sortedBy { it.centerY }) {
@@ -285,47 +266,46 @@ class TableParser(
                     }
             }
             val joined = filtered.sortedBy { it.box.left }.joinToString(" ") { it.text }
-            val recovered = withoutEdgeCounters(joined, date)
-            val raw = recovered ?: joined
+            val recovered = OcrShiftRecovery.propose(joined, date)
+            val raw = recovered?.text ?: joined
             val ocr =
                 filtered
-                    .mapNotNull { it.confidence?.toDouble() }
-                    .average()
-                    .takeUnless { it.isNaN() } ?: 0.75
+                    .map { token ->
+                        token.confidence
+                            ?.toDouble()
+                            ?.takeIf { it.isFinite() && it >= 0.0 }
+                            ?.coerceIn(0.0, 1.0) ?: 0.65
+                    }
+                    .minOrNull() ?: 0.65
             val association =
                 if (filtered.any { it.box.left < column.left || it.box.right > column.right }) 0.65
                 else 1.0
-            val dateQuality = if (column.explicitYear || confirmedMonday != null) 1.0 else 0.6
-            val syntax = if (ShiftParser.parse(raw, date).type == CellType.UNKNOWN) 0.0 else 1.0
             val confidence =
-                (0.25 * ocr +
-                        0.25 * chosen.score +
-                        0.2 * association +
-                        0.15 * dateQuality +
-                        0.15 * syntax)
-                    // Recovery from fragmented/merged OCR requires an explicit source check.
+                // Name/date/syntax must not inflate a weak OCR reading. Dates are gated separately.
+                minOf(ocr, chosen.score, association)
                     .coerceIn(0.0, if (recovered != null) 0.65 else 1.0)
             ShiftParser.parse(
-                raw,
-                date,
-                confidence,
-                Box(
-                    column.left,
-                    (band.top +
-                            minOf(
-                                rowSlope * (column.left - chosen.box.centerX),
-                                rowSlope * (column.right - chosen.box.centerX),
-                            ))
-                        .coerceIn(0f, 1f),
-                    column.right,
-                    (band.bottom +
-                            maxOf(
-                                rowSlope * (column.left - chosen.box.centerX),
-                                rowSlope * (column.right - chosen.box.centerX),
-                            ))
-                        .coerceIn(0f, 1f),
-                ),
-            )
+                    raw,
+                    date,
+                    confidence,
+                    Box(
+                        column.left,
+                        (band.top +
+                                minOf(
+                                    rowSlope * (column.left - chosen.box.centerX),
+                                    rowSlope * (column.right - chosen.box.centerX),
+                                ))
+                            .coerceIn(0f, 1f),
+                        column.right,
+                        (band.bottom +
+                                maxOf(
+                                    rowSlope * (column.left - chosen.box.centerX),
+                                    rowSlope * (column.right - chosen.box.centerX),
+                                ))
+                            .coerceIn(0f, 1f),
+                    ),
+                )
+                .copy(ocrOriginal = if (recovered != null) joined else null)
         }
         return ExtractionResult(candidates, chosen, band, finalColumns, cells, issues)
     }

@@ -224,7 +224,9 @@ class LocalScheduleExtractor(private val images: ImageProcessor) : ScheduleExtra
                 if (
                     chosenTable.selected == null ||
                         chosenTable.columns.size < 7 ||
-                        chosenTable.cells.any { it.type == CellType.UNKNOWN }
+                        chosenTable.cells.any {
+                            it.type == CellType.UNKNOWN || it.ocrOriginal != null
+                        }
                 ) {
                     var denseTokens = recognizeTiles(image.bitmap, recognizer)
                     var denseTable = parser.extract(denseTokens, image.profile, image.referenceDate)
@@ -251,7 +253,10 @@ class LocalScheduleExtractor(private val images: ImageProcessor) : ScheduleExtra
                     }
                 }
                 // Retry uncertain cells in isolation after locating the employee row.
-                for (cell in chosenTable.cells.filter { tiled || it.type == CellType.UNKNOWN }) {
+                for (cell in
+                    chosenTable.cells.filter {
+                        tiled || it.type == CellType.UNKNOWN || it.ocrOriginal != null
+                    }) {
                     val region = cell.source ?: continue
                     val plan =
                         CellOcrPlanner.plan(
@@ -283,7 +288,7 @@ class LocalScheduleExtractor(private val images: ImageProcessor) : ScheduleExtra
                         )
                     onReading?.invoke("cell", refined)
                     if (
-                        cell.type == CellType.UNKNOWN &&
+                        (cell.type == CellType.UNKNOWN || cell.ocrOriginal != null) &&
                             refined.cells.firstOrNull { it.date == cell.date }?.type ==
                                 CellType.UNKNOWN
                     ) {

@@ -11,6 +11,115 @@ class ParserTest {
     private val monday = LocalDate.of(2026, 10, 5)
 
     @Test
+    fun recoveredLettersAndRepeatedDigitsRequireSourceVerificationEvenAfterDateConfirmation() {
+        for (raw in listOf("4 18:30-21I:30", "4 18:30-211:30")) {
+            val tokens =
+                fixture().filterNot { it.text == "19-01" || it.text == "6" } +
+                    token(raw, 0.29f, 0.3f)
+            for (confirmed in listOf<LocalDate?>(null, monday)) {
+                val cell =
+                    TableParser()
+                        .extract(
+                            tokens,
+                            EmployeeProfile("Luca Baldeddu"),
+                            monday,
+                            confirmedMonday = confirmed,
+                        )
+                        .cells
+                        .first()
+                assertEquals(CellType.WORK_SHIFT, cell.type)
+                assertEquals(LocalTime.of(18, 30), cell.start)
+                assertEquals(LocalTime.of(21, 30), cell.end)
+                assertEquals(raw, cell.ocrOriginal)
+                assertFalse(cell.raw.any { it.isLetter() })
+                assertTrue(cell.raw.count { it.isDigit() } <= ShiftParser.MAX_TIME_DIGITS)
+                assertTrue(cell.needsReview)
+                assertTrue(cell.confidence <= 0.65)
+                val error =
+                    assertThrows(IllegalArgumentException::class.java) {
+                        EventFactory.create(
+                            cell,
+                            emptyList(),
+                            EventOptions("Turno"),
+                            ZoneId.of("Europe/Rome"),
+                        )
+                    }
+                assertEquals("REVIEW_REQUIRED", error.message)
+            }
+        }
+    }
+
+    @Test
+    fun strongNameDateAndSyntaxCannotRaiseWeakOrMissingOcrConfidence() {
+        for (ocr in listOf<Float?>(0.12f, null, Float.NaN, -1f)) {
+            val tokens = fixture().map { if (it.text == "19-01") it.copy(confidence = ocr) else it }
+            val cell =
+                TableParser()
+                    .extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
+                    .cells
+                    .first()
+            assertEquals(CellType.WORK_SHIFT, cell.type)
+            assertTrue(cell.needsReview)
+            assertEquals(if (ocr == 0.12f) 0.12 else 0.65, cell.confidence, 0.0001)
+            val confirmed =
+                TableParser()
+                    .extract(
+                        tokens,
+                        EmployeeProfile("Luca Baldeddu"),
+                        monday,
+                        confirmedMonday = monday,
+                    )
+                    .cells
+                    .first()
+            assertEquals(cell.confidence, confirmed.confidence, 0.0)
+        }
+        val fragments =
+            fixture().filterNot { it.text == "19-01" || it.text == "6" } +
+                listOf(
+                    token("19", 0.265f, 0.3f, 0.02f),
+                    token("-", 0.285f, 0.3f, 0.008f).copy(confidence = 0.1f),
+                    token("01", 0.305f, 0.3f, 0.02f),
+                )
+        assertEquals(
+            0.1,
+            TableParser()
+                .extract(fragments, EmployeeProfile("Luca Baldeddu"), monday)
+                .cells
+                .first()
+                .confidence,
+            0.0001,
+        )
+        val missing = fragments.map { if (it.text == "-") it.copy(confidence = null) else it }
+        assertEquals(
+            0.65,
+            TableParser()
+                .extract(missing, EmployeeProfile("Luca Baldeddu"), monday)
+                .cells
+                .first()
+                .confidence,
+            0.0001,
+        )
+    }
+
+    @Test
+    fun omittedLeadingZeroInHourHasTheSameMeaningAndScore() {
+        fun read(raw: String) =
+            TableParser()
+                .extract(
+                    fixture().map { if (it.text == "19-01") it.copy(text = raw) else it },
+                    EmployeeProfile("Luca Baldeddu"),
+                    monday,
+                )
+                .cells
+                .first()
+        val short = read("22-1")
+        val padded = read("22-01")
+        assertEquals(padded.signature(), short.signature())
+        assertEquals(padded.confidence, short.confidence, 0.0)
+        assertNull(short.ocrOriginal)
+    }
+
+    @Test
     fun missingWeekdayCanUseExplicitDateButRequiresConfirmation() {
         val tokens = fixture().filterNot { it.text == "MERCOLEDI" }
         val result = TableParser().extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)

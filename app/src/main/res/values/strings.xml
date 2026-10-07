@@ -104,5 +104,6 @@
     <string name="save_photo">Conserva copia foto (scelta esplicita)</string>
     <string name="validation_error">Controlla nome, titolo, promemoria e colore.</string>
     <string name="cancel_import">Annulla importazione</string>
-    <string name="confidence_label">Confidenza euristica: %1$d%%</string>
+    <string name="confidence_label">Punteggio lettura: %1$d/100</string>
+    <string name="ocr_original_reading">Lettura OCR originale: %1$s</string>
 </resources>

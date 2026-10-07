@@ -51,6 +51,8 @@ La versione 0.1.2 recupera anche orari frammentati dall’OCR o uniti a contator
 
 La versione 0.1.3 rilegge le celle usando i box del testo completo, con margini e ingrandimento adattati alla dimensione dei caratteri. Questo evita di tagliare cifre quando le intestazioni sono decentrate rispetto alle celle. Se la lettura resta illeggibile, prova più contesto; i contatori uniti alle cifre senza separatori possono ancora richiedere modifica manuale.
 
+La versione 0.1.4 usa la grammatica degli orari per proporre il recupero di un carattere sospetto o di una cifra duplicata, mantenendo il limite di otto cifre e nessuna lettera nell’intervallo. Ogni proposta richiede verifica e mostra la lettura OCR originale. Il punteggio considera il segnale meno affidabile; confermare nome e date non aumenta la qualità attribuita alle cifre.
+
 ## Privacy e permessi
 
 CAMERA serve soltanto alla cattura. Il Photo Picker non richiede accesso all’intera galleria. READ_CALENDAR e WRITE_CALENDAR sono richiesti quando si continua dalla revisione. Le catture temporanee vengono rimosse dopo la lettura e all’avvio successivo in caso di interruzione. L’immagine viene conservata in memoria durante la revisione; l’utente può salvarne una copia tramite il selettore Android.
@@ -69,4 +71,4 @@ Questa versione gestisce una cella e un evento per giorno. Più turni separati n
 
 Documentazione: [architettura](docs/ARCHITECTURE.md), [pipeline OCR](docs/OCR_PIPELINE.md), [parser](docs/SHIFT_PARSER.md), [sincronizzazione](docs/CALENDAR_SYNC.md), [report verifiche](docs/IMPLEMENTATION_REPORT.md).
 
-La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Le correzioni OCR sono documentate per [0.1.1](docs/OCR_FIX_0_1_1.md), [0.1.2](docs/OCR_FIX_0_1_2.md) e [0.1.3](docs/OCR_FIX_0_1_3.md).
+La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Le correzioni OCR sono documentate per [0.1.1](docs/OCR_FIX_0_1_1.md), [0.1.2](docs/OCR_FIX_0_1_2.md), [0.1.3](docs/OCR_FIX_0_1_3.md) e [0.1.4](docs/OCR_FIX_0_1_4.md).
