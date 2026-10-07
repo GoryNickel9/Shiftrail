@@ -15,6 +15,12 @@ class UiSmokeTest {
 
     @Test
     fun homeSettingsAndProfileFields() {
+        compose.waitUntil(20000) {
+            compose
+                .onAllNodes(androidx.compose.ui.test.hasText("Impostazioni"))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
         compose.onNodeWithText("Impostazioni").performClick()
         compose.onNodeWithText("Nome e cognome da cercare").assertIsDisplayed()
         compose.onNodeWithText("Alias OCR, uno per riga").assertIsDisplayed()

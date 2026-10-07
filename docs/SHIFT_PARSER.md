@@ -8,7 +8,11 @@ I token dei nomi sono quelli a sinistra del confine del primo giorno e sotto l�
 
 ## Intestazioni, colonne e date
 
-I giorni riconosciuti includono nomi italiani accentati/non accentati, abbreviazioni a tre lettere e piccoli errori con similarità almeno 0,82. Il parser sceglie la fascia di intestazione con più giorni distinti. I separatori delle colonne sono i punti medi fra i centri dei giorni: nessuna coordinata della fixture è hardcoded.
+I giorni riconosciuti includono nomi italiani accentati/non accentati, abbreviazioni a tre lettere e piccoli errori con similarità almeno 0,82. Il parser sceglie la fascia di intestazione con più giorni distinti, valutando anche linee inclinate con pendenza normalizzata massima 0,15 e residuo entro 0,7 altezze del token. I separatori delle colonne sono i punti medi fra i centri dei giorni: nessuna coordinata della fixture è hardcoded.
+
+Le date vengono cercate tra l’intestazione e la prima riga dei nomi, entro tre altezze del token del giorno. Questo impedisce di interpretare come data un turno `22-01` subito sotto l’intestazione. La fascia del dipendente segue una linea ancorata al nome, scelta minimizzando la distanza dei token vicini nelle colonne, con pendenza normalizzata limitata a 0,12. I ritagli delle celle includono l’inclinazione stimata. Il crop a quattro angoli resta necessario per prospettive forti; questo adattamento gestisce l’inclinazione residua.
+
+Un giorno illeggibile può essere recuperato dalla data esplicita della sua colonna: servono almeno due date con anno nella zona dell’intestazione, un unico lunedì coerente e un ordine compatibile con i giorni già letti. Il parser ricava il weekday dalla data e la posizione dal suo box. Questo recupero richiede sempre la conferma del lunedì; non inventa una colonna dalla sola spaziatura.
 
 I formati data includono `5-ott-2026`, `05/10`, `05-10`, `5 OCT`, `05 OTT`. Le date esplicite prevalgono sull’inferenza. Date senza anno usano l’anno di riferimento per una proposta, che richiede conferma. I lunedì dedotti dai diversi giorni devono coincidere e il weekday deve essere corretto. Una conferma esplicita del lunedì sostituisce le date OCR in conflitto e assegna le date a tutte le colonne rilevate. Con meno di sette intestazioni la UI richiede conferma; i giorni mancanti possono essere aggiunti manualmente.
 

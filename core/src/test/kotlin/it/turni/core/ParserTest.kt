@@ -10,6 +10,49 @@ class ParserTest {
     private val monday = LocalDate.of(2026, 10, 5)
 
     @Test
+    fun missingWeekdayCanUseExplicitDateButRequiresConfirmation() {
+        val tokens = fixture().filterNot { it.text == "MERCOLEDI" }
+        val result = TableParser().extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
+        assertEquals(7, result.columns.size)
+        assertEquals(7, result.cells.size)
+        assertTrue(ExtractionIssue.DATE_CONFIRMATION in result.issues)
+        assertEquals(LocalTime.of(23, 45), result.cells[2].start)
+        val confirmed =
+            TableParser()
+                .extract(tokens, EmployeeProfile("Luca Baldeddu"), monday, confirmedMonday = monday)
+        assertTrue(confirmed.issues.toString(), confirmed.issues.isEmpty())
+    }
+
+    @Test
+    fun conflictingTimeReadingsRemainBlockedAfterDateConfirmation() {
+        val tokens =
+            fixture().map { if (it.text == "19-01") it.copy(text = "19-01 / 19-03") else it }
+        val result =
+            TableParser()
+                .extract(tokens, EmployeeProfile("Luca Baldeddu"), monday, confirmedMonday = monday)
+        assertEquals(CellType.UNKNOWN, result.cells.first().type)
+        assertTrue(result.cells.first().needsReview)
+    }
+
+    @Test
+    fun shiftsImmediatelyBelowHeaderAreNotParsedAsDates() {
+        val compact =
+            fixture().map { token ->
+                val shift = if (token.centerY > 0.2f) -0.16f else 0f
+                token.copy(
+                    box =
+                        token.box.copy(
+                            top = token.box.top + shift,
+                            bottom = token.box.bottom + shift,
+                        )
+                )
+            } + token("22-01", 0.395f, 0.14f)
+        val result = TableParser().extract(compact, EmployeeProfile("Luca Baldeddu"), monday)
+        assertFalse(result.issues.toString(), ExtractionIssue.INVALID_DATES in result.issues)
+        assertEquals(monday.plusDays(1), result.columns[1].date)
+    }
+
+    @Test
     fun timeFormatsAndOvernight() {
         for ((raw, start, end) in
             listOf(
@@ -104,6 +147,28 @@ class ParserTest {
         tokens += token("01", 0.305f, 0.3f, 0.02f)
         val result = TableParser().extract(tokens, EmployeeProfile("Luca Baldeddu"), monday)
         assertEquals(LocalTime.of(19, 0), result.cells.first().start)
+    }
+
+    @Test
+    fun tiltedHeaderAndEmployeeRowStayTogether() {
+        val tilted =
+            fixture().map { token ->
+                val shift = (if (token.centerY < 0.2f) 0.055f else 0.04f) * (token.centerX - 0.1f)
+                token.copy(
+                    box =
+                        token.box.copy(
+                            top = token.box.top + shift,
+                            bottom = token.box.bottom + shift,
+                        )
+                )
+            }
+        val result = TableParser().extract(tilted, EmployeeProfile("Luca Baldeddu"), monday)
+        assertTrue(result.issues.toString(), result.issues.isEmpty())
+        assertEquals(7, result.columns.size)
+        assertEquals(
+            listOf("19-01", "X", "23:45-5:45", "FE", "12-18", "6:30-12:30", "A.G."),
+            result.cells.map { it.raw },
+        )
     }
 
     @Test

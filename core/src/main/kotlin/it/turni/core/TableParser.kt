@@ -36,19 +36,79 @@ class TableParser(
         }
         // Pick a coherent horizontal header, rather than matching weekday text in arbitrary cells.
         val headerRows = rows(headerTokens.map { it.second })
+        val slopedHeaders = headerTokens.flatMap { (_, a) ->
+            headerTokens.mapNotNull { (_, b) ->
+                val dx = b.centerX - a.centerX
+                if (abs(dx) < 0.1f) return@mapNotNull null
+                val slope = (b.centerY - a.centerY) / dx
+                if (abs(slope) > 0.15f) return@mapNotNull null
+                headerTokens
+                    .map { it.second }
+                    .filter { t ->
+                        abs(t.centerY - a.centerY - slope * (t.centerX - a.centerX)) <
+                            maxOf(a.box.height, t.box.height) * 0.7f
+                    }
+            }
+        }
         val header =
-            headerRows
+            (headerRows + slopedHeaders)
                 .maxByOrNull { row ->
                     row.mapNotNull { ItalianDateParser.weekday(it.text) }.distinct().size
                 }
                 .orEmpty()
-        val headers =
+        var headers =
             header
                 .mapNotNull { token -> ItalianDateParser.weekday(token.text)?.let { it to token } }
                 .distinctBy { it.first }
                 .sortedBy { it.second.centerX }
         if (headers.size < 2)
             return ExtractionResult(issues = setOf(ExtractionIssue.HEADER_NOT_FOUND))
+        val headerHeight = header.map { it.box.height }.sorted()[header.size / 2]
+        val datedTokens = tokens.mapNotNull { token ->
+            val date = ItalianDateParser.date(token.text, referenceDate.year)
+            if (
+                date?.explicitYear == true &&
+                    token.centerY >= header.minOf { it.box.top } &&
+                    token.centerY <= header.maxOf { it.box.bottom } + headerHeight * 2f
+            )
+                token to date.date
+            else null
+        }
+        val dateAnchors =
+            datedTokens
+                .map { (_, date) -> date.minusDays((date.dayOfWeek.value - 1).toLong()) }
+                .distinct()
+        val inferred =
+            if (datedTokens.map { it.second }.distinct().size >= 2 && dateAnchors.size == 1)
+                datedTokens
+                    .filter { (_, date) -> headers.none { it.first == date.dayOfWeek.value } }
+                    .filter { (token, date) ->
+                        val leftDay =
+                            headers.lastOrNull { it.second.centerX < token.centerX }?.first ?: 0
+                        val rightDay =
+                            headers.firstOrNull { it.second.centerX > token.centerX }?.first ?: 8
+                        date.dayOfWeek.value > leftDay && date.dayOfWeek.value < rightDay
+                    }
+                    .distinctBy { it.second.dayOfWeek.value }
+                    .map { (token, date) ->
+                        val first = headers.first().second
+                        val last = headers.last().second
+                        val slope =
+                            if (last.centerX > first.centerX)
+                                (last.centerY - first.centerY) / (last.centerX - first.centerX)
+                            else 0f
+                        val y = first.centerY + slope * (token.centerX - first.centerX)
+                        date.dayOfWeek.value to
+                            token.copy(
+                                box =
+                                    token.box.copy(
+                                        top = y - headerHeight / 2,
+                                        bottom = y + headerHeight / 2,
+                                    )
+                            )
+                    }
+            else emptyList()
+        headers = (headers + inferred).sortedBy { it.second.centerX }
         val spacing =
             headers.zipWithNext { a, b -> b.second.centerX - a.second.centerX }.average().toFloat()
         val nameBoundary = headers.first().second.centerX - spacing * 0.5f
@@ -72,6 +132,8 @@ class TableParser(
                 .filter { it.score >= matchThreshold }
                 .sortedByDescending { it.score }
         val issues = mutableSetOf<ExtractionIssue>()
+        if (inferred.isNotEmpty() && confirmedMonday == null)
+            issues += ExtractionIssue.DATE_CONFIRMATION
         val chosen =
             selectedRow
                 ?: candidates.firstOrNull()?.takeIf {
@@ -79,6 +141,7 @@ class TableParser(
                 }
         if (candidates.isEmpty() && selectedRow == null) issues += ExtractionIssue.NAME_NOT_FOUND
         else if (chosen == null) issues += ExtractionIssue.AMBIGUOUS_NAME
+        val firstNameTop = nameRows.minOfOrNull { row -> row.minOf { it.box.top } } ?: 1f
         val columns = headers.mapIndexed { index, (weekday, token) ->
             val left =
                 if (index == 0) nameBoundary
@@ -89,7 +152,9 @@ class TableParser(
             val dateTokens = tokens.filter {
                 it.centerX >= left &&
                     it.centerX < right &&
-                    abs(it.centerY - token.centerY) <= maxOf(token.box.height * 4, 0.06f)
+                    it.centerY >= token.box.top &&
+                    it.centerY < firstNameTop &&
+                    abs(it.centerY - token.centerY) <= token.box.height * 3
             }
             val dateTexts =
                 dateTokens.map { it.text } +
@@ -150,10 +215,44 @@ class TableParser(
             below?.let { (it + chosen.box.centerY) / 2 }
                 ?: chosen.box.bottom + chosen.box.height * 0.45f
         val band = Box(0f, maxOf(0f, top), 1f, minOf(1f, bottom))
+        val nearRow = tokens.filter {
+            it.centerX >= nameBoundary &&
+                it.box.height < band.height * 1.5f &&
+                abs(it.centerY - chosen.box.centerY) < band.height * 3
+        }
+        val slopes =
+            listOf(0f) +
+                nearRow.mapNotNull {
+                    val dx = it.centerX - chosen.box.centerX
+                    if (dx < 0.1f) null
+                    else ((it.centerY - chosen.box.centerY) / dx).takeIf { s -> abs(s) <= 0.12f }
+                }
+        // Anchor the fitted row at the employee name; nearby rows must not shift this anchor.
+        val rowSlope =
+            slopes.minByOrNull { slope ->
+                finalColumns
+                    .mapNotNull { column ->
+                        nearRow
+                            .filter { it.centerX >= column.left && it.centerX < column.right }
+                            .minOfOrNull {
+                                val distance =
+                                    abs(
+                                        it.centerY -
+                                            chosen.box.centerY -
+                                            slope * (it.centerX - chosen.box.centerX)
+                                    ) / band.height
+                                distance * distance
+                            }
+                    }
+                    .average()
+                    .takeUnless { it.isNaN() } ?: Double.MAX_VALUE
+            } ?: 0f
         val cells = finalColumns.mapNotNull { column ->
             val date = column.date ?: return@mapNotNull null
             val cellTokens = tokens.filter {
-                band.containsY(it.centerY) && it.centerX >= column.left && it.centerX < column.right
+                band.containsY(it.centerY - rowSlope * (it.centerX - chosen.box.centerX)) &&
+                    it.centerX >= column.left &&
+                    it.centerX < column.right
             }
             // Standalone counters have no shift separator; exclude them before joining split OCR
             // elements.
@@ -186,7 +285,22 @@ class TableParser(
                 raw,
                 date,
                 confidence,
-                Box(column.left, band.top, column.right, band.bottom),
+                Box(
+                    column.left,
+                    (band.top +
+                            minOf(
+                                rowSlope * (column.left - chosen.box.centerX),
+                                rowSlope * (column.right - chosen.box.centerX),
+                            ))
+                        .coerceIn(0f, 1f),
+                    column.right,
+                    (band.bottom +
+                            maxOf(
+                                rowSlope * (column.left - chosen.box.centerX),
+                                rowSlope * (column.right - chosen.box.centerX),
+                            ))
+                        .coerceIn(0f, 1f),
+                ),
             )
         }
         return ExtractionResult(candidates, chosen, band, finalColumns, cells, issues)

@@ -1,4 +1,6 @@
-# Report implementazione
+# Report implementazione 0.1.0
+
+Questo report descrive la consegna iniziale. La correzione successiva per tabelloni fitti è documentata in [OCR_FIX_0_1_1.md](OCR_FIX_0_1_1.md); il checksum corrente è in [APK_SHA256.txt](APK_SHA256.txt).
 
 App Android nativa implementata nel repository `app-turni`, branch `codex/android-local-ocr`. Nessun fork e nessuna copia di codice applicativo. Le dipendenze e i progetti valutati sono in `OPEN_SOURCE_RESEARCH.md` e `THIRD_PARTY_NOTICES.md`.
 

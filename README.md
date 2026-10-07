@@ -43,7 +43,9 @@ La CI esegue build debug, test JVM e lint. I test strumentati richiedono un disp
 ./gradlew connectedDebugAndroidTest
 ```
 
-`testdata/synthetic-roster.png` usa dipendenti fittizi e verifica il flusso OCR. Configura `Luca Baldeddu` per provarlo. Abilita **Developer** per vedere token, riga e divisori. La foto reale citata nella richiesta non era inclusa nell’allegato disponibile; l’accuratezza su quel tabellone resta da misurare.
+`testdata/synthetic-roster.png` usa dipendenti fittizi e verifica il flusso OCR. Configura `Luca Baldeddu` per provarlo. I test verificano anche la versione ridotta e un altro tabellone con layout, dipendente, settimana e turni diversi. Abilita **Developer** per vedere token, celle e divisori.
+
+La versione 0.1.1 rilegge i tabelloni fitti tramite ritagli sovrapposti ingranditi, riconosce intestazioni inclinate e cerca le date sopra la prima riga dei dipendenti. Le letture discordanti degli orari diventano celle da correggere: **Mostra origine** consente il confronto con la foto e **Modifica** inserisce il valore corretto. Nomi, coordinate e orari delle foto segnalate non sono incorporati nel codice dell’app.
 
 ## Privacy e permessi
 
@@ -63,4 +65,4 @@ Questa versione gestisce una cella e un evento per giorno. Più turni separati n
 
 Documentazione: [architettura](docs/ARCHITECTURE.md), [pipeline OCR](docs/OCR_PIPELINE.md), [parser](docs/SHIFT_PARSER.md), [sincronizzazione](docs/CALENDAR_SYNC.md), [report verifiche](docs/IMPLEMENTATION_REPORT.md).
 
-La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md).
+La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Risultati e limiti della versione 0.1.1 sono in [docs/OCR_FIX_0_1_1.md](docs/OCR_FIX_0_1_1.md).

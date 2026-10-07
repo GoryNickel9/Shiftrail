@@ -171,6 +171,7 @@ fun DebugScreen(state: AppState) {
                 extraction.enhanced.toString(),
             )
         )
+        Text(stringResource(R.string.debug_tiled, extraction.tiled.toString()))
         Box(Modifier.fillMaxWidth().aspectRatio(bitmap.width.toFloat() / bitmap.height)) {
             Image(bitmap.asImageBitmap(), stringResource(R.string.debug), Modifier.fillMaxSize())
             Canvas(Modifier.fillMaxSize()) {
@@ -185,13 +186,19 @@ fun DebugScreen(state: AppState) {
                         style = Stroke(1.5f),
                     )
                 }
-                extraction.table.rowBand?.let { box ->
-                    drawRect(
-                        Color.Green.copy(alpha = 0.25f),
-                        Offset(0f, box.top * size.height),
-                        androidx.compose.ui.geometry.Size(size.width, box.height * size.height),
-                    )
-                }
+                extraction.table.cells
+                    .mapNotNull { it.source }
+                    .ifEmpty { listOfNotNull(extraction.table.rowBand) }
+                    .forEach { box ->
+                        drawRect(
+                            Color.Green.copy(alpha = 0.25f),
+                            Offset(box.left * size.width, box.top * size.height),
+                            androidx.compose.ui.geometry.Size(
+                                (box.right - box.left) * size.width,
+                                box.height * size.height,
+                            ),
+                        )
+                    }
                 extraction.table.columns.forEach { column ->
                     drawLine(
                         Color.Red,

@@ -111,6 +111,11 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDe
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     if (cell.endNextDay) Text(stringResource(R.string.overnight))
+                    if (cell.type == CellType.UNKNOWN && cell.raw.contains(" / "))
+                        Text(
+                            stringResource(R.string.ocr_disagreement),
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     if (cell.type == CellType.CODE && state.mappings.none { it.code == cell.code })
                         Text(
                             stringResource(R.string.unmapped_code),

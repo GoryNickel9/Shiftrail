@@ -54,7 +54,7 @@
     <string name="empty_ocr">OCR vuoto. Riprendi la foto con più luce, testo a fuoco e meno distanza.</string>
     <string name="name_not_found">Nome non trovato. Seleziona la tua riga o modifica gli alias.</string>
     <string name="ambiguous_name">Quale riga è la tua?</string>
-    <string name="header_not_found">Intestazione non riconosciuta. Ritaglia nuovamente includendo i giorni della settimana.</string>
+    <string name="header_not_found">Non riesco a leggere i giorni della settimana. Raddrizza il tabellone con i quattro angoli, mantieni visibili nomi e date oppure usa una foto più nitida.</string>
     <string name="date_confirmation">Date incomplete o anno mancante. Conferma il lunedì della settimana.</string>
     <string name="invalid_dates">Le date OCR sono in conflitto con i giorni. Verifica il tabellone e conferma il lunedì corretto.</string>
     <string name="monday">Lunedì della settimana (AAAA-MM-GG)</string>
@@ -98,6 +98,8 @@
     <string name="debug">OCR Debug</string>
     <string name="debug_help">Blu: token OCR. Verde: fascia della riga. Rosso: divisori dei giorni.</string>
     <string name="debug_stats">Token: %1$d · OCR: %2$d ms · Contrasto selezionato: %3$s</string>
+    <string name="debug_tiled">Lettura per ritagli ingranditi: %1$s</string>
+    <string name="ocr_disagreement">Letture OCR discordanti. Controlla Mostra origine e usa Modifica per inserire il valore corretto.</string>
     <string name="source_not_saved">Le immagini di origine sono disponibili soltanto durante la revisione.</string>
     <string name="save_photo">Conserva copia foto (scelta esplicita)</string>
     <string name="validation_error">Controlla nome, titolo, promemoria e colore.</string>
