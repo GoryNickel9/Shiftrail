@@ -5,6 +5,28 @@ import kotlin.math.abs
 
 /** Maps crop-local geometry back to the source, then merges overlapping OCR passes. */
 object OcrGeometry {
+    /** A local reread must not move the fitted row or alter other days' contents. */
+    fun preservesOtherCells(
+        before: ExtractionResult,
+        after: ExtractionResult,
+        date: LocalDate,
+    ): Boolean {
+        if (
+            before.selected?.label != after.selected?.label || before.cells.size != after.cells.size
+        )
+            return false
+        val previous = before.cells.associateBy { it.date }
+        val next = after.cells.associateBy { it.date }
+        if (date !in previous || previous.keys != next.keys || next.size != after.cells.size)
+            return false
+        return previous.all { (day, cell) ->
+            val candidate = next.getValue(day)
+            day == date ||
+                (cell.signature() == candidate.signature() &&
+                    (cell.type != CellType.UNKNOWN || cell.raw == candidate.raw))
+        }
+    }
+
     fun conflictingReadings(first: ShiftCell, second: ShiftCell): List<String> {
         val readable = setOf(CellType.WORK_SHIFT, CellType.CODE)
         val alternatives =

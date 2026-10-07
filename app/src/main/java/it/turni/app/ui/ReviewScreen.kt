@@ -145,7 +145,21 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onDe
                             Text(stringResource(R.string.delete))
                         }
                         if (cell.source != null)
-                            TextButton(onClick = { source = cell.source }) {
+                            TextButton(
+                                onClick = {
+                                    val bitmap = state.analyzed
+                                    source =
+                                        if (bitmap != null) {
+                                            CellOcrPlanner.plan(
+                                                    extraction.tokens,
+                                                    cell,
+                                                    bitmap.width,
+                                                    bitmap.height,
+                                                )
+                                                ?.region ?: cell.source
+                                        } else cell.source
+                                }
+                            ) {
                                 Text(stringResource(R.string.origin))
                             }
                     }

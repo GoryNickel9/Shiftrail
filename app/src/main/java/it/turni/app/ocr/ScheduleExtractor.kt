@@ -34,6 +34,8 @@ interface ScheduleExtractor {
 }
 
 class LocalScheduleExtractor(private val images: ImageProcessor) : ScheduleExtractor {
+    internal var onReading: ((String, ExtractionResult) -> Unit)? = null
+
     private suspend fun recognize(bitmap: Bitmap, recognizer: TextRecognizer): List<OcrToken> {
         val result = recognizer.process(InputImage.fromBitmap(bitmap, 0)).await()
         return result.textBlocks
@@ -205,6 +207,8 @@ class LocalScheduleExtractor(private val images: ImageProcessor) : ScheduleExtra
                 val parser = TableParser()
                 val a = parser.extract(original, image.profile, image.referenceDate)
                 val b = parser.extract(enhanced, image.profile, image.referenceDate)
+                onReading?.invoke("original", a)
+                onReading?.invoke("contrast", b)
                 fun quality(table: ExtractionResult) =
                     table.cells.count {
                         it.type == CellType.WORK_SHIFT || it.type == CellType.CODE
@@ -224,6 +228,7 @@ class LocalScheduleExtractor(private val images: ImageProcessor) : ScheduleExtra
                 ) {
                     var denseTokens = recognizeTiles(image.bitmap, recognizer)
                     var denseTable = parser.extract(denseTokens, image.profile, image.referenceDate)
+                    onReading?.invoke("tiles", denseTable)
                     if (
                         denseTable.columns.size in 2..6 ||
                             denseTable.issues.any {
@@ -248,27 +253,75 @@ class LocalScheduleExtractor(private val images: ImageProcessor) : ScheduleExtra
                 // Retry uncertain cells in isolation after locating the employee row.
                 for (cell in chosenTable.cells.filter { tiled || it.type == CellType.UNKNOWN }) {
                     val region = cell.source ?: continue
-                    val local =
+                    val plan =
+                        CellOcrPlanner.plan(
+                            chosenTokens,
+                            cell,
+                            image.bitmap.width,
+                            image.bitmap.height,
+                        ) ?: continue
+                    var local =
                         recognizeRegion(
                             image.bitmap,
-                            region,
-                            (96f / (region.height * image.bitmap.height)).coerceIn(1f, 4f),
+                            plan.region,
+                            plan.scale,
                             recognizer,
                         )
-                    val combined =
+                    fun replaceCell(readings: List<OcrToken>) =
                         chosenTokens.filterNot {
                             it.centerX >= region.left &&
                                 it.centerX < region.right &&
                                 region.containsY(it.centerY)
-                        } + local
-                    val refined =
+                        } + readings
+                    var combined = replaceCell(local)
+                    var refined =
                         parser.extract(
                             combined,
                             image.profile,
                             image.referenceDate,
                             selectedRow = chosenTable.selected,
                         )
-                    if (quality(refined) >= quality(chosenTable) && local.isNotEmpty()) {
+                    onReading?.invoke("cell", refined)
+                    if (
+                        cell.type == CellType.UNKNOWN &&
+                            refined.cells.firstOrNull { it.date == cell.date }?.type ==
+                                CellType.UNKNOWN
+                    ) {
+                        val fallback =
+                            recognizeRegion(
+                                image.bitmap,
+                                region,
+                                (96f / (region.height * image.bitmap.height)).coerceIn(1f, 4f),
+                                recognizer,
+                            )
+                        val candidate = replaceCell(fallback)
+                        val fallbackTable =
+                            parser.extract(
+                                candidate,
+                                image.profile,
+                                image.referenceDate,
+                                selectedRow = chosenTable.selected,
+                            )
+                        onReading?.invoke("cell-context", fallbackTable)
+                        if (
+                            fallback.isNotEmpty() &&
+                                quality(fallbackTable) >= quality(refined) &&
+                                OcrGeometry.preservesOtherCells(
+                                    chosenTable,
+                                    fallbackTable,
+                                    cell.date,
+                                )
+                        ) {
+                            local = fallback
+                            combined = candidate
+                            refined = fallbackTable
+                        }
+                    }
+                    if (
+                        quality(refined) >= quality(chosenTable) &&
+                            local.isNotEmpty() &&
+                            OcrGeometry.preservesOtherCells(chosenTable, refined, cell.date)
+                    ) {
                         val retry = refined.cells.firstOrNull { it.date == cell.date }
                         val disagreement =
                             retry?.let { OcrGeometry.conflictingReadings(cell, it) }.orEmpty()

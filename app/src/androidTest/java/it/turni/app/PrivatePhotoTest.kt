@@ -33,9 +33,14 @@ class PrivatePhotoTest {
                     )
                 )
                 .use { requireNotNull(BitmapFactory.decodeStream(it)) }
-        val result =
-            LocalScheduleExtractor(ImageProcessor(instrumentation.targetContext))
-                .extract(ImageInput(bitmap, EmployeeProfile(employee), monday))
+        val extractor = LocalScheduleExtractor(ImageProcessor(instrumentation.targetContext))
+        extractor.onReading = { stage, table ->
+            android.util.Log.i(
+                "TurniRead",
+                "$stage cells=${table.cells.map { it.raw to it.confidence }}",
+            )
+        }
+        val result = extractor.extract(ImageInput(bitmap, EmployeeProfile(employee), monday))
         android.util.Log.i(
             "TurniPrivate",
             "tokens=${result.tokens.size} issues=${result.table.issues} columns=${result.table.columns.size} selected=${result.table.selected?.label} cells=${result.table.cells.map { it.raw }}",
@@ -55,6 +60,12 @@ class PrivatePhotoTest {
             ShiftParser.parse(raw, monday.plusDays(index.toLong())).signature()
         }
         result.table.cells.forEachIndexed { index, cell ->
+            if (arguments.getString("requireUnambiguous") == "true")
+                assertNotEquals(
+                    "Every cell must be readable in this regression",
+                    CellType.UNKNOWN,
+                    cell.type,
+                )
             if (cell.type == CellType.UNKNOWN) {
                 assertTrue(
                     "Expected reading must remain visible in an ambiguous cell",

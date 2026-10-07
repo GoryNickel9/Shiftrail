@@ -20,6 +20,78 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class OcrFixtureTest {
     @Test
+    fun smallTextWithOffsetHeadersAndAttachedCountersIsReadSafely() = runBlocking {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val monday = LocalDate.of(2026, 12, 7)
+        val shifts =
+            listOf("11:15-17:15", "20-23", "06:45-12:45", "07-13", "17-01", "13-16", "23:30-02:30")
+        val source = Bitmap.createBitmap(1840, 360, Bitmap.Config.ARGB_8888)
+        val paint =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = 24f
+            }
+        Canvas(source).apply {
+            drawColor(Color.WHITE)
+            paint.textAlign = Paint.Align.CENTER
+            listOf("LUNEDI", "MARTEDI", "MERCOLEDI", "GIOVEDI", "VENERDI", "SABATO", "DOMENICA")
+                .forEachIndexed { i, day ->
+                    val x = 500f + 200f * i
+                    drawText(day, x + 30f, 65f, paint)
+                    drawText("${7 + i}/12/2026", x + 30f, 100f, paint)
+                    drawLine(x - 100f, 40f, x - 100f, 315f, paint)
+                    drawLine(x + 76f, 120f, x + 76f, 315f, paint)
+                }
+            listOf("MARCO NERI", "ELISA FERRI", "ANNA ROSSI").forEachIndexed { r, name ->
+                val y = 210f + 40f * r
+                paint.textAlign = Paint.Align.LEFT
+                drawText(name, 30f, y, paint)
+                paint.textAlign = Paint.Align.CENTER
+                (if (r == 1) shifts else List(7) { "18-22" }).forEachIndexed { c, raw ->
+                    val x = 500f + 200f * c
+                    drawText(raw, x, y, paint)
+                    drawText("6", x + 90f, y, paint)
+                }
+                drawLine(20f, y + 12f, 1830f, y + 12f, paint)
+            }
+        }
+        val bitmap = Bitmap.createScaledBitmap(source, 920, 180, true)
+        source.recycle()
+        try {
+            val extractor = LocalScheduleExtractor(ImageProcessor(instrumentation.targetContext))
+            extractor.onReading = { stage, table ->
+                android.util.Log.i("TurniOffset", "$stage cells=${table.cells.map { it.raw }}")
+            }
+            val result =
+                extractor.extract(ImageInput(bitmap, EmployeeProfile("Elisa Ferri"), monday))
+            val table =
+                TableParser()
+                    .extract(
+                        result.tokens,
+                        EmployeeProfile("Elisa Ferri"),
+                        monday,
+                        selectedRow = result.table.selected,
+                        confirmedMonday = monday,
+                    )
+            assertNotNull(result.table.selected)
+            assertEquals(7, table.cells.size)
+            android.util.Log.i("TurniOffset", "final cells=${table.cells.map { it.raw }}")
+            shifts.forEachIndexed { i, raw ->
+                val cell = table.cells[i]
+                val expected = ShiftParser.parse(raw, monday.plusDays(i.toLong())).signature()
+                if (i == shifts.lastIndex && cell.type == CellType.UNKNOWN) {
+                    // OCR can attach the counter to the last minute digit without whitespace.
+                    // This must stay blocked rather than inventing a boundary inside the number.
+                    assertTrue(cell.raw, cell.raw.contains("23:30"))
+                    assertTrue(cell.needsReview)
+                } else assertEquals(expected, cell.signature())
+            }
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+    @Test
     fun anotherLayoutNameWeekAndShiftsAreReadFromPixels() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val monday = LocalDate.of(2026, 11, 16)

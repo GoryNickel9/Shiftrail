@@ -5,6 +5,52 @@ import org.junit.Test
 
 class OcrGeometryTest {
     @Test
+    fun localRefinementCannotReplaceOtherDaysWithValuesFromAdjacentRows() {
+        val date = java.time.LocalDate.of(2026, 12, 7)
+        val first = ShiftParser.parse("11+15-17:15", date)
+        val second = ShiftParser.parse("20-23", date.plusDays(1))
+        val third = ShiftParser.parse("23:30-02:306", date.plusDays(2))
+        val before = ExtractionResult(cells = listOf(first, second, third))
+        val correct =
+            before.copy(cells = listOf(ShiftParser.parse("11:15-17:15", date), second, third))
+        assertTrue(OcrGeometry.preservesOtherCells(before, correct, date))
+        assertFalse(
+            OcrGeometry.preservesOtherCells(
+                before,
+                correct.copy(
+                    cells = listOf(correct.cells[0], ShiftParser.parse("18-22", second.date), third)
+                ),
+                date,
+            )
+        )
+        assertFalse(
+            OcrGeometry.preservesOtherCells(
+                before,
+                correct.copy(cells = correct.cells.dropLast(1)),
+                date,
+            )
+        )
+        assertFalse(
+            OcrGeometry.preservesOtherCells(
+                before,
+                correct.copy(
+                    cells = listOf(correct.cells[0], second, third.copy(raw = "23:30-02:308"))
+                ),
+                date,
+            )
+        )
+        assertFalse(
+            OcrGeometry.preservesOtherCells(
+                before,
+                correct.copy(
+                    cells = listOf(correct.cells[0], second, third.copy(date = date.plusDays(3)))
+                ),
+                date,
+            )
+        )
+    }
+
+    @Test
     fun validButDifferentTimesMustBeReviewedRatherThanGuessed() {
         val date = java.time.LocalDate.of(2026, 11, 16)
         val a = ShiftParser.parse("22-01", date)
