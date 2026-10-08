@@ -1,6 +1,8 @@
 package it.turni.app.data
 
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import it.turni.core.*
 import java.time.LocalDate
 import java.time.LocalTime
@@ -73,13 +75,37 @@ data class MappingEntity(
 data class SettingsEntity(
     @PrimaryKey val id: Int = 1,
     val calendarId: Long? = null,
-    val title: String = "Turno di lavoro",
+    val title: String = EventFactory.WORK_EVENT_TITLE,
     val location: String = "",
     val description: String = "",
-    val reminderMinutes: Int? = null,
-    val eventColor: Int? = null,
+    val reminderMinutes: Int? = 30,
+    val eventColor: Int? = 0xff1a73e8.toInt(),
     val developer: Boolean = false,
+    @ColumnInfo(defaultValue = "-16023485") val restColor: Int? = 0xff0b8043.toInt(),
+    @ColumnInfo(defaultValue = "1") val saveRestDays: Boolean = true,
 )
+
+@Entity(
+    tableName = "extra_work",
+    indices = [Index(value = ["employeeId", "date", "startTime", "endTime"], unique = true)],
+)
+data class ExtraWorkEntity(
+    @PrimaryKey val id: String,
+    val employeeId: String,
+    val date: String,
+    val startTime: String,
+    val endTime: String,
+    val createdAt: Long,
+) {
+    fun period() =
+        WorkPeriod(
+            id,
+            LocalDate.parse(date),
+            LocalTime.parse(startTime),
+            LocalTime.parse(endTime),
+            WorkSource.EXTRA,
+        )
+}
 
 @Dao
 interface TurniDao {
@@ -126,6 +152,39 @@ interface TurniDao {
     @Upsert suspend fun saveShift(shift: ShiftEntity)
 
     @Query("DELETE FROM shifts WHERE id = :id") suspend fun removeShift(id: String)
+
+    @Query(
+        "SELECT * FROM shifts WHERE employeeId = :employee AND date BETWEEN :fromDate AND :untilDate ORDER BY date"
+    )
+    fun recordedShifts(
+        employee: String,
+        fromDate: String,
+        untilDate: String,
+    ): Flow<List<ShiftEntity>>
+
+    @Query(
+        "SELECT * FROM extra_work WHERE employeeId = :employee AND date BETWEEN :fromDate AND :untilDate ORDER BY date, startTime"
+    )
+    fun extraWork(
+        employee: String,
+        fromDate: String,
+        untilDate: String,
+    ): Flow<List<ExtraWorkEntity>>
+
+    @Query(
+        "SELECT * FROM extra_work WHERE employeeId = :employee AND date = :date AND startTime = :start AND endTime = :end LIMIT 1"
+    )
+    suspend fun findExtra(
+        employee: String,
+        date: String,
+        start: String,
+        end: String,
+    ): ExtraWorkEntity?
+
+    @Upsert suspend fun saveExtra(extra: ExtraWorkEntity)
+
+    @Query("DELETE FROM extra_work WHERE id = :id AND employeeId = :employee")
+    suspend fun removeExtra(id: String, employee: String)
 }
 
 @Database(
@@ -136,10 +195,34 @@ interface TurniDao {
             ShiftEntity::class,
             MappingEntity::class,
             SettingsEntity::class,
+            ExtraWorkEntity::class,
         ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class TurniDatabase : RoomDatabase() {
     abstract fun dao(): TurniDao
+
+    companion object {
+        val MIGRATION_1_2 =
+            object : Migration(1, 2) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE settings ADD COLUMN restColor INTEGER DEFAULT -16023485"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE settings ADD COLUMN saveRestDays INTEGER NOT NULL DEFAULT 1"
+                    )
+                    db.execSQL(
+                        "UPDATE settings SET title = 'Lavoro', reminderMinutes = COALESCE(reminderMinutes, 30), eventColor = COALESCE(eventColor, -15043608)"
+                    )
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS extra_work (id TEXT NOT NULL, employeeId TEXT NOT NULL, date TEXT NOT NULL, startTime TEXT NOT NULL, endTime TEXT NOT NULL, createdAt INTEGER NOT NULL, PRIMARY KEY(id))"
+                    )
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS index_extra_work_employeeId_date_startTime_endTime ON extra_work (employeeId, date, startTime, endTime)"
+                    )
+                }
+            }
+    }
 }

@@ -22,6 +22,80 @@ class CalendarTest {
         val event = event("19-01")
         assertEquals(6 * 3600000L, event.endMillis - event.startMillis)
         assertEquals("Europe/Rome", event.timezone)
+        assertEquals(
+            monday.plusDays(1),
+            java.time.Instant.ofEpochMilli(event.endMillis)
+                .atZone(ZoneId.of("Europe/Rome"))
+                .toLocalDate(),
+        )
+        assertEquals("Lavoro", event.title)
+    }
+
+    @Test
+    fun optionsUseIndependentColorsAndCanExcludeRestWithoutAffectingNightWork() {
+        val custom = EventOptions("Legacy title", reminderMinutes = 60, color = 10, restColor = 20)
+        val work =
+            EventFactory.create(
+                ShiftParser.parse("23:45-03", monday, 0.90),
+                emptyList(),
+                custom,
+                ZoneId.of("Europe/Rome"),
+            )!!
+        val rest =
+            EventFactory.create(
+                ShiftParser.parse("X", monday, 0.90),
+                emptyList(),
+                custom,
+                ZoneId.of("Europe/Rome"),
+            )!!
+        assertEquals("Lavoro", work.title)
+        assertEquals(10, work.color)
+        assertEquals(20, rest.color)
+        assertEquals(60, work.reminderMinutes)
+        assertEquals(60, rest.reminderMinutes)
+        assertNull(
+            EventFactory.create(
+                ShiftParser.parse("X", monday, 0.5),
+                emptyList(),
+                custom.copy(saveRestDays = false),
+                ZoneId.of("Europe/Rome"),
+            )
+        )
+        assertEquals(
+            work,
+            EventFactory.create(
+                ShiftParser.parse("23:45-03", monday, 0.90),
+                emptyList(),
+                custom.copy(saveRestDays = false),
+                ZoneId.of("Europe/Rome"),
+            ),
+        )
+        assertNotEquals(
+            work.contentSignature,
+            EventFactory.create(
+                    ShiftParser.parse("23:45-03", monday, 0.90),
+                    emptyList(),
+                    custom.copy(reminderMinutes = null, color = null),
+                    ZoneId.of("Europe/Rome"),
+                )!!
+                .contentSignature,
+        )
+    }
+
+    @Test
+    fun overnightParsingPreservesTheSameReadingConfidenceAsDaytime() {
+        for (score in listOf(0.79, 0.90, 0.99)) {
+            val night = ShiftParser.parse("22-1", monday, score)
+            val day = ShiftParser.parse("12-15", monday, score)
+            assertEquals(day.confidence, night.confidence, 0.0)
+            assertEquals(day.needsReview, night.needsReview)
+            assertTrue(night.endNextDay)
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun negativeReminderIsRejected() {
+        EventOptions(reminderMinutes = -1)
     }
 
     @Test

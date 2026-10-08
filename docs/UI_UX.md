@@ -1,8 +1,10 @@
-# UI e revisione — Shiftrail 0.2.1
+# UI e revisione — Shiftrail 0.2.2
 
 ## Flusso
 
-Home e Impostazioni sono raggiungibili dalla navigazione inferiore. Impostazioni presenta un solo campo, Nome e cognome, con Salva fisso in basso. La prima apertura presenta la configurazione del nome; con un profilo salvato, la home mostra cattura e importazione, seguite dai prossimi turni. L’immagine comunica il passaggio dal tabellone al calendario.
+Home, Ore e Impostazioni sono raggiungibili dalla navigazione inferiore. Impostazioni presenta Nome e cognome, preavviso, colori distinti per lavoro/riposo e scelta di esportare le X, con Salva fisso in basso e contenuto scorrevole. Le scelte di colore includono un nome e un campione visivo. La prima apertura presenta la configurazione del nome; con un profilo salvato, la home mostra cattura e importazione, seguite dai prossimi turni. L’immagine comunica il passaggio dal tabellone al calendario.
+
+Ore presenta mese/anno selezionabile, filtro per le settimane del mese, totale e separazione tra turni ed extra. Aggiungi lavoro extra rimane fisso in basso; il form richiede data, inizio e fine. Ogni extra può essere modificato o eliminato. I giorni precedenti alla prima sincronizzazione non sono inventati; il mese senza dati mostra un totale zero.
 
 L’importazione indica tre passaggi: Foto, Controllo, Calendario. Crop e OCR restano locali. La revisione mostra dipendente, problemi delle intestazioni e schede ordinate per data. Gli stati sono testuali: Pronto, Verificato, Da controllare, Da correggere. Il colore rafforza lo stato, senza essere l’unico segnale.
 
@@ -20,7 +22,7 @@ I dettagli del punteggio rimangono visibili nelle schede incerte; per quelle pro
 
 Continua, Salva impostazioni e Applica al calendario sono in un footer fisso mentre il contenuto scorre. Le azioni Modifica e Mostra origine usano `FlowRow`, così vanno a capo invece di uscire dalla scheda. Eliminazione e dettagli sono nel menu del giorno; l’eliminazione chiede una conferma per evitare un’esclusione accidentale. Il pulsante di ritorno ha un’etichetta accessibile. Le azioni principali hanno altezza minima di 48–52 dp.
 
-Storico e la schermata di diagnostica sono rimossi. La modalità scura segue le preferenze di Android. La revisione visualizza `X` come Giorno di riposo e informa che verrà salvato come evento di intera giornata. Le altre lettere richiedono correzione; non possono essere confermate come orari o sigle.
+Storico e la schermata di diagnostica sono rimossi. La modalità scura segue le preferenze di Android. La revisione visualizza `X` come Giorno di riposo e informa se verrà salvato come evento di intera giornata oppure escluso secondo le impostazioni. Una X esclusa non blocca la prosecuzione per un punteggio basso. Le altre lettere richiedono correzione; non possono essere confermate come orari o sigle.
 
 ## Verifica
 

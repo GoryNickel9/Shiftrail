@@ -39,6 +39,7 @@ class CalendarRepository(private val resolver: ContentResolver) {
                         CalendarContract.Calendars._ID,
                         CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
                         CalendarContract.Calendars.ACCOUNT_NAME,
+                        CalendarContract.Calendars.NAME,
                     ),
                     "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ? AND ${CalendarContract.Calendars.VISIBLE} = 1",
                     arrayOf(CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString()),
@@ -46,13 +47,22 @@ class CalendarRepository(private val resolver: ContentResolver) {
                 )
                 ?.use { cursor ->
                     buildList {
-                        while (cursor.moveToNext()) add(
-                            WritableCalendar(
-                                cursor.getLong(0),
-                                cursor.getString(1).orEmpty(),
-                                cursor.getString(2).orEmpty(),
+                        while (cursor.moveToNext()) {
+                            val displayName = cursor.getString(1).orEmpty()
+                            val internalName = cursor.getString(3).orEmpty()
+                            if (
+                                listOf(displayName, internalName).any {
+                                    it.trim().equals("PC Sync", ignoreCase = true)
+                                }
                             )
-                        )
+                                add(
+                                    WritableCalendar(
+                                        cursor.getLong(0),
+                                        "Google Calendar",
+                                        cursor.getString(2).orEmpty(),
+                                    )
+                                )
+                        }
                     }
                 }
                 .orEmpty()
@@ -166,7 +176,8 @@ class CalendarRepository(private val resolver: ContentResolver) {
                             CalendarContract.Events.HAS_ALARM,
                             if (incoming.reminderMinutes != null) 1 else 0,
                         )
-                        incoming.color?.let { put(CalendarContract.Events.EVENT_COLOR, it) }
+                        if (incoming.color == null) putNull(CalendarContract.Events.EVENT_COLOR)
+                        else put(CalendarContract.Events.EVENT_COLOR, incoming.color)
                     }
                 val eventIndex = operations.size
                 operations +=

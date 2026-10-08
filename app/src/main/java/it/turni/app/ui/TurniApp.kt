@@ -81,10 +81,11 @@ fun TurniApp(vm: AppViewModel) {
                 )
             },
             bottomBar = {
-                if (route in listOf("home", "settings")) {
+                if (route in listOf("home", "hours", "settings")) {
                     NavigationBar {
                         listOf(
                                 Triple("home", R.string.home, R.drawable.ic_calendar),
+                                Triple("hours", R.string.hours, R.drawable.ic_hours),
                                 Triple("settings", R.string.settings, R.drawable.ic_profile),
                             )
                             .forEach { (destination, label, icon) ->
@@ -137,6 +138,9 @@ fun TurniApp(vm: AppViewModel) {
                             )
                         }
                         composable("settings") { SettingsScreen(state, vm) { nav.popBackStack() } }
+                        composable("hours") {
+                            HoursScreen(state, vm, onSettings = { nav.navigate("settings") })
+                        }
                         composable("camera") {
                             CameraScreen(
                                 onCaptured = { file ->

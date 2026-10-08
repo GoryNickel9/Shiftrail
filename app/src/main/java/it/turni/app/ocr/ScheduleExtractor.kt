@@ -255,7 +255,7 @@ class LocalScheduleExtractor(private val images: ImageProcessor) : ScheduleExtra
                 // Retry uncertain cells in isolation after locating the employee row.
                 for (cell in
                     chosenTable.cells.filter {
-                        tiled || it.type == CellType.UNKNOWN || it.ocrOriginal != null
+                        tiled || it.needsReview || it.ocrOriginal != null
                     }) {
                     val region = cell.source ?: continue
                     val plan =
@@ -322,9 +322,17 @@ class LocalScheduleExtractor(private val images: ImageProcessor) : ScheduleExtra
                             refined = fallbackTable
                         }
                     }
+                    val retryCell = refined.cells.firstOrNull { it.date == cell.date }
+                    val preservesReadingQuality =
+                        cell.type == CellType.UNKNOWN ||
+                            cell.ocrOriginal != null ||
+                            retryCell == null ||
+                            retryCell.signature() != cell.signature() ||
+                            retryCell.confidence >= cell.confidence
                     if (
                         quality(refined) >= quality(chosenTable) &&
                             local.isNotEmpty() &&
+                            preservesReadingQuality &&
                             OcrGeometry.preservesOtherCells(chosenTable, refined, cell.date)
                     ) {
                         val retry = refined.cells.firstOrNull { it.date == cell.date }

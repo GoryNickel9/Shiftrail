@@ -12,6 +12,7 @@ import it.turni.app.data.TurniDatabase
 import it.turni.core.*
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -45,7 +46,7 @@ class CalendarIntegrationTest {
             ContentValues().apply {
                 put(CalendarContract.Calendars.ACCOUNT_NAME, "turni-test")
                 put(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL)
-                put(CalendarContract.Calendars.NAME, "turni-test")
+                put(CalendarContract.Calendars.NAME, " pC SyNc ")
                 put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "Turni test")
                 put(CalendarContract.Calendars.CALENDAR_COLOR, 0xff006c67.toInt())
                 put(
@@ -59,6 +60,34 @@ class CalendarIntegrationTest {
                 put(CalendarContract.Calendars.ALLOWED_REMINDERS, "1")
             }
         val id = ContentUris.parseId(requireNotNull(resolver.insert(calendarUri, values)))
+        val otherId =
+            ContentUris.parseId(
+                requireNotNull(
+                    resolver.insert(
+                        calendarUri,
+                        ContentValues(values).apply {
+                            put(CalendarContract.Calendars.NAME, "other-calendar")
+                            put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "Other calendar")
+                        },
+                    )
+                )
+            )
+        val readOnlyId =
+            ContentUris.parseId(
+                requireNotNull(
+                    resolver.insert(
+                        calendarUri,
+                        ContentValues(values).apply {
+                            put(CalendarContract.Calendars.NAME, "read-only")
+                            put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "PC Sync")
+                            put(
+                                CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+                                CalendarContract.Calendars.CAL_ACCESS_READ,
+                            )
+                        },
+                    )
+                )
+            )
         val db = Room.inMemoryDatabaseBuilder(context, TurniDatabase::class.java).build()
         try {
             val provider = CalendarRepository(resolver)
@@ -66,18 +95,68 @@ class CalendarIntegrationTest {
             val monday = LocalDate.of(2026, 10, 5)
             fun cells(raw: String) =
                 (0L..6L).map { ShiftParser.parse(if (it == 0L) raw else "", monday.plusDays(it)) }
-            fun events(raw: String) =
+            fun events(raw: String, options: EventOptions = EventOptions(reminderMinutes = 15)) =
                 listOf(
                     requireNotNull(
                         EventFactory.create(
                             cells(raw).first(),
                             emptyList(),
-                            EventOptions("Turno test", reminderMinutes = 15),
+                            options,
                             ZoneId.of("Europe/Rome"),
                         )
                     )
                 )
             assertTrue(provider.calendars().any { it.id == id })
+            assertEquals("Google Calendar", provider.calendars().single { it.id == id }.name)
+            assertFalse(provider.calendars().any { it.id == otherId || it.id == readOnlyId })
+            resolver
+                .query(
+                    ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, id),
+                    arrayOf(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                )!!
+                .use {
+                    assertTrue(it.moveToFirst())
+                    assertEquals("Turni test", it.getString(0))
+                }
+            try {
+                provider.apply(otherId, emptyList())
+                fail("Other calendars must not be writable through Shiftrail")
+            } catch (error: IllegalArgumentException) {
+                assertEquals("CALENDAR_UNAVAILABLE", error.message)
+            }
+            fun assertOptions(event: Long, minutes: Int?, color: Int?) {
+                resolver
+                    .query(
+                        ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, event),
+                        arrayOf(CalendarContract.Events.TITLE, CalendarContract.Events.EVENT_COLOR),
+                        null,
+                        null,
+                        null,
+                    )!!
+                    .use {
+                        assertTrue(it.moveToFirst())
+                        if (color == null) assertTrue(it.isNull(1))
+                        else assertEquals(color.toInt(), it.getInt(1))
+                    }
+                resolver
+                    .query(
+                        CalendarContract.Reminders.CONTENT_URI,
+                        arrayOf(CalendarContract.Reminders.MINUTES),
+                        "${CalendarContract.Reminders.EVENT_ID} = ?",
+                        arrayOf(event.toString()),
+                        null,
+                    )!!
+                    .use {
+                        assertEquals(if (minutes == null) 0 else 1, it.count)
+                        if (minutes != null) {
+                            assertTrue(it.moveToFirst())
+                            assertEquals(minutes.toInt(), it.getInt(0))
+                        }
+                    }
+            }
             val first =
                 sync.prepare("employee", monday, id, "hash", cells("19-01"), events("19-01"))
             assertEquals(ChangeKind.INSERT, first.changes.single().kind)
@@ -88,6 +167,15 @@ class CalendarIntegrationTest {
                     .single()
             val eventId = saved.calendarEventId
             assertEquals(21600000L, provider.event(eventId)!!.let { it.end - it.start })
+            assertEquals("Lavoro", provider.event(eventId)!!.title)
+            assertOptions(eventId, 15, 0xff1a73e8.toInt())
+            assertTrue(
+                db.dao()
+                    .recordedShifts("employee", monday.toString(), monday.toString())
+                    .first()
+                    .single()
+                    .endNextDay
+            )
             val repeated =
                 sync.prepare("employee", monday, id, "hash", cells("19-01"), events("19-01"))
             assertEquals(ChangeKind.UNCHANGED, repeated.changes.single().kind)
@@ -128,15 +216,47 @@ class CalendarIntegrationTest {
                 restEvent.start,
             )
             assertEquals(86400000L, restEvent.end - restEvent.start)
+            assertOptions(eventId, 15, 0xff0b8043.toInt())
             val sameRest = sync.prepare("employee", monday, id, "rest", cells("X"), events("X"))
             assertEquals(ChangeKind.UNCHANGED, sameRest.changes.single().kind)
             sync.commit(sameRest, emptySet())
+            val excludedRest =
+                sync.prepare("employee", monday, id, "rest-excluded", cells("X"), emptyList())
+            sync.commit(excludedRest, emptySet())
+            assertNotNull(provider.event(eventId))
+            val excludedNewRest =
+                sync.prepare("new-employee", monday, id, "rest-excluded", cells("X"), emptyList())
+            assertTrue(excludedNewRest.changes.isEmpty())
             val workAgain =
                 sync.prepare("employee", monday, id, "work", cells("18-21"), events("18-21"))
             assertEquals(ChangeKind.UPDATE, workAgain.changes.single().kind)
             sync.commit(workAgain, setOf(monday))
             assertFalse(provider.event(eventId)!!.allDay)
-            assertEquals("Turno test", provider.event(eventId)!!.title)
+            assertEquals("Lavoro", provider.event(eventId)!!.title)
+            val customOptions = EventOptions(reminderMinutes = 0, color = 0xff8e24aa.toInt())
+            val preferences =
+                sync.prepare(
+                    "employee",
+                    monday,
+                    id,
+                    "prefs",
+                    cells("18-21"),
+                    events("18-21", customOptions),
+                )
+            assertEquals(ChangeKind.UPDATE, preferences.changes.single().kind)
+            sync.commit(preferences, setOf(monday))
+            assertOptions(eventId, 0, customOptions.color)
+            val removedOptions =
+                sync.prepare(
+                    "employee",
+                    monday,
+                    id,
+                    "no-prefs",
+                    cells("18-21"),
+                    events("18-21", customOptions.copy(reminderMinutes = null, color = null)),
+                )
+            sync.commit(removedOptions, setOf(monday))
+            assertOptions(eventId, null, null)
             val missing = sync.prepare("employee", monday, id, "hash3", cells(""), emptyList())
             assertEquals(ChangeKind.MISSING, missing.changes.single().kind)
             sync.commit(missing, emptySet())
@@ -154,6 +274,16 @@ class CalendarIntegrationTest {
                 calendarUri,
                 "${CalendarContract.Calendars._ID} = ?",
                 arrayOf(id.toString()),
+            )
+            resolver.delete(
+                calendarUri,
+                "${CalendarContract.Calendars._ID} = ?",
+                arrayOf(otherId.toString()),
+            )
+            resolver.delete(
+                calendarUri,
+                "${CalendarContract.Calendars._ID} = ?",
+                arrayOf(readOnlyId.toString()),
             )
         }
     }

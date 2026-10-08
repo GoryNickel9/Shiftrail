@@ -1,0 +1,217 @@
+package it.turni.app
+
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.platform.app.InstrumentationRegistry
+import it.turni.app.data.*
+import it.turni.core.WorkingHours
+import java.io.File
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
+
+class HoursUiTest {
+    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun savedShiftsMonthWeekAndManualExtraSurviveRestartWithoutDuplicatingImportedHours() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val app = context.applicationContext as TurniApplication
+        val dao = app.database.dao()
+        val month = YearMonth.now()
+        val oldProfile = runBlocking { dao.profile() }
+        compose.waitUntil(15000) {
+            compose.onAllNodesWithText("Impostazioni").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (oldProfile == null) {
+            compose.onNodeWithText("Impostazioni").performClick()
+            compose.onNodeWithText("Nome e cognome").performTextInput("Marta Neri")
+            compose.onNodeWithText("Salva").performClick()
+            compose.waitUntil(15000) {
+                compose
+                    .onAllNodesWithText("Importa per Marta Neri")
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
+            }
+        }
+        val profile = requireNotNull(runBlocking { dao.profile() })
+        val employee = profile.id
+        val ids = listOf("hours-incoming", "hours-night", "hours-old-calendar", "hours-rest")
+        try {
+            runBlocking {
+                dao.saveWeek(
+                    WeekEntity(
+                        "hours-test-week",
+                        employee,
+                        month.atDay(1).toString(),
+                        1,
+                        "hours-test",
+                    )
+                )
+                fun shift(
+                    id: String,
+                    date: String,
+                    start: String?,
+                    end: String?,
+                    calendar: Long,
+                    updated: Long,
+                    code: String? = null,
+                ) =
+                    ShiftEntity(
+                        id,
+                        "hours-test-week",
+                        employee,
+                        date,
+                        start,
+                        end,
+                        end != null && start != null && end < start,
+                        code,
+                        if (code == null) "WORK_SHIFT" else "CODE",
+                        0.95,
+                        calendar * 10,
+                        calendar,
+                        id,
+                        1,
+                        updated,
+                    )
+                dao.saveShift(
+                    shift(ids[0], month.atDay(1).minusDays(1).toString(), "23:00", "02:00", 1001, 2)
+                )
+                dao.saveShift(shift(ids[1], month.atDay(5).toString(), "19:00", "01:00", 1001, 2))
+                dao.saveShift(shift(ids[2], month.atDay(5).toString(), "18:00", "01:00", 1002, 1))
+                dao.saveShift(shift(ids[3], month.atDay(6).toString(), null, null, 1001, 2, "X"))
+            }
+            waitForHome(profile.name)
+            compose.onNodeWithText("Ore").performClick()
+            waitForTotal("8 h 00 min")
+            compose.onNodeWithTag("hours_work").assertTextEquals("8 h 00 min")
+            compose.onNodeWithTag("hours_extra").assertTextEquals("0 h 00 min")
+            compose.onNodeWithText("Aggiungi lavoro extra").performClick()
+            compose.onNodeWithTag("extra_date").performTextClearance()
+            compose.onNodeWithTag("extra_date").performTextInput(month.atDay(8).toString())
+            compose.onNodeWithTag("extra_start").performTextInput("22:00")
+            compose.onNodeWithTag("extra_end").performScrollTo().performTextInput("01:00")
+            compose.onNodeWithText("Salva").performClick()
+            waitForTotal("11 h 00 min")
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Modifica"))
+            compose.onNodeWithText("Modifica").performClick()
+            compose.onNodeWithTag("extra_start").performTextClearance()
+            compose.onNodeWithTag("extra_start").performTextInput("22:30")
+            compose.activityRule.scenario.recreate()
+            compose.onNodeWithTag("extra_start").assertTextContains("22:30")
+            compose.onNodeWithText("Salva").performClick()
+            compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+            waitForTotal("10 h 30 min")
+            saveScreenshot("hours-month.png")
+            compose.onNodeWithTag("choose_week").performClick()
+            val week = WorkingHours.monthWeeks(month).first()
+            val format = DateTimeFormatter.ofPattern("dd/MM")
+            compose
+                .onNodeWithText(
+                    "Settimana ${week.from.format(format)} – ${week.until.format(format)}"
+                )
+                .performClick()
+            waitForTotal(if (week.until.dayOfMonth >= 5) "8 h 00 min" else "2 h 00 min")
+            saveScreenshot("hours-week.png")
+            compose.onNodeWithTag("choose_week").performClick()
+            compose.onNodeWithText("Tutto il mese").performClick()
+            waitForTotal("10 h 30 min")
+            compose.onNodeWithTag("previous_month").performClick()
+            waitForTotal("1 h 00 min")
+            compose.onNodeWithTag("next_month").performClick()
+            waitForTotal("10 h 30 min")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10000) {
+                compose.onAllNodesWithTag("hours_total").fetchSemanticsNodes().isNotEmpty()
+            }
+            waitForTotal("10 h 30 min")
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Elimina"))
+            compose.onNodeWithText("Elimina").performClick()
+            compose.onNodeWithText("Eliminare il lavoro extra?").assertIsDisplayed()
+            compose.onNodeWithTag("extra_delete_confirm").performClick()
+            compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+            waitForTotal("8 h 00 min")
+            assertNull(
+                runBlocking { dao.findExtra(employee, month.atDay(8).toString(), "22:30", "01:00") }
+            )
+            compose.onNodeWithTag("choose_week").performClick()
+            compose
+                .onNodeWithText(
+                    "Settimana ${week.from.format(format)} – ${week.until.format(format)}"
+                )
+                .performClick()
+            compose.onNodeWithText("Aggiungi lavoro extra").performClick()
+            compose.onNodeWithTag("extra_date").performTextClearance()
+            compose
+                .onNodeWithTag("extra_date")
+                .performTextInput(month.minusMonths(1).atDay(3).toString())
+            compose.onNodeWithTag("extra_start").performTextInput("09:00")
+            compose.onNodeWithTag("extra_end").performScrollTo().performTextInput("10:15")
+            compose.onNodeWithText("Salva").performClick()
+            waitForTotal("2 h 15 min")
+            compose.onNodeWithTag("choose_week").assertTextContains("Tutto il mese")
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Elimina"))
+            compose.onNodeWithText("Elimina").performClick()
+            compose.onNodeWithTag("extra_delete_confirm").performClick()
+            compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+            waitForTotal("1 h 00 min")
+            compose.onNodeWithTag("next_month").performClick()
+            waitForTotal("8 h 00 min")
+        } finally {
+            runBlocking {
+                ids.forEach { dao.removeShift(it) }
+                dao.findExtra(employee, month.atDay(8).toString(), "22:30", "01:00")?.let {
+                    dao.removeExtra(it.id, employee)
+                }
+                dao.findExtra(employee, month.atDay(8).toString(), "22:00", "01:00")?.let {
+                    dao.removeExtra(it.id, employee)
+                }
+                dao.findExtra(employee, month.minusMonths(1).atDay(3).toString(), "09:00", "10:15")
+                    ?.let {
+                        dao.removeExtra(it.id, employee)
+                    }
+                if (oldProfile != null) dao.saveProfile(oldProfile)
+                else
+                    app.database.openHelper.writableDatabase.execSQL(
+                        "DELETE FROM profiles WHERE id = ?",
+                        arrayOf(employee),
+                    )
+                app.database.openHelper.writableDatabase.execSQL(
+                    "DELETE FROM weeks WHERE id = 'hours-test-week'"
+                )
+            }
+        }
+    }
+
+    private fun waitForHome(name: String) {
+        compose.waitUntil(15000) {
+            compose.onAllNodesWithText("Importa per $name").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun waitForTotal(text: String) {
+        compose.waitUntil(15000) {
+            compose
+                .onAllNodes(hasTestTag("hours_total") and hasText(text))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        compose.onNodeWithTag("hours_total").assertTextEquals(text)
+    }
+
+    private fun saveScreenshot(name: String) {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        File(context.filesDir, name).outputStream().use {
+            compose
+                .onRoot()
+                .captureToImage()
+                .asAndroidBitmap()
+                .compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+    }
+}

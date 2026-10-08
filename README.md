@@ -8,13 +8,15 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 ## Utilizzo
 
-1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone.
+1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone. Scegli il preavviso (inizialmente 30 minuti), i colori di lavoro e riposo e se salvare le X.
 2. Scatta una foto o scegli un’immagine con il Photo Picker. Trascina i quattro angoli del crop mantenendo visibili nome, giorni e date.
 3. Controlla la riga scelta e le date. Se il nome è ambiguo, seleziona la riga; se l’anno manca, conferma la data del lunedì.
 4. Correggi, elimina o aggiungi celle. Usa **Mostra origine** per confrontare il contenuto. Sotto 90/100 occorre una verifica esplicita; da 90/100 incluso non compare una conferma individuale. Le celle non riconosciute richiedono correzione o eliminazione.
-5. Scegli il calendario e verifica il piano di sincronizzazione. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
+5. Scegli **Google Calendar**, che identifica esclusivamente il calendario PC Sync del dispositivo, e verifica il piano di sincronizzazione. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
 
-`19-01` produce un evento dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e produce un evento di intera giornata intitolato **Giorno di riposo**. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
+`19-01` produce un evento **Lavoro** dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e, se abilitata nelle impostazioni, produce un evento di intera giornata intitolato **Giorno di riposo**. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
+
+**Ore** mostra il totale di un mese o di una sua settimana, distinguendo i turni salvati dal lavoro extra. L’extra si inserisce con data, inizio e fine; può essere modificato o eliminato e resta locale a Shiftrail. I turni notturni sono suddivisi a mezzanotte quando attraversano il confine del periodo. Le ore importate derivano dal programma salvato, non da una rilevazione delle presenze. Vedi [conteggio ore](docs/WORKING_HOURS.md).
 
 ## Build
 
@@ -31,7 +33,7 @@ Su Windows usa `gradlew.bat`. L’APK è `app/build/outputs/apk/debug/app-debug.
 
 In questo ambiente Windows Java restituisce `Unable to establish loopback connection` sulle socket AF_UNIX. `scripts/verify-windows.ps1 -Jdk "C:\Program Files\Java\jdk-21"` applica un workaround soltanto ai processi figli, esegue build/test/lint e ripristina le variabili d’ambiente. Non serve su un ambiente sano.
 
-Il pacchetto consegnato è `artifacts/Shiftrail-0.2.1.apk` ed è firmato con la stessa chiave di sviluppo delle versioni precedenti. Una distribuzione pubblica richiede una chiave release privata e la verifica delle policy del canale di distribuzione.
+Il pacchetto consegnato è `artifacts/Shiftrail-0.2.2.apk` ed è firmato con la stessa chiave di sviluppo delle versioni precedenti. Una distribuzione pubblica richiede una chiave release privata e la verifica delle policy del canale di distribuzione.
 
 ## Architettura e test
 
@@ -74,5 +76,7 @@ Documentazione: [architettura](docs/ARCHITECTURE.md), [pipeline OCR](docs/OCR_PI
 La versione 0.2.0 introduce Shiftrail, l’immagine della home, la navigazione inferiore, il tema scuro e i pulsanti principali fissi. Identità e prompt dell’immagine sono in [BRANDING.md](docs/BRANDING.md); flusso e soglia sono in [UI_UX.md](docs/UI_UX.md).
 
 La versione 0.2.1 elimina Storico e la schermata di diagnostica, limita Impostazioni al nome e cognome e interpreta soltanto `X` come Giorno di riposo. Gli eventi di riposo sono intera giornata; gli altri turni mantengono orari e identità. Le vecchie legende non influenzano più l’importazione. Dettagli e verifiche sono in [UI_RELEASE_0_2_1.md](docs/UI_RELEASE_0_2_1.md).
+
+La versione 0.2.2 aggiunge Ore, extra manuali, preferenze del calendario e migrazione Room 1→2. PC Sync viene mostrato come Google Calendar; i turni si chiamano Lavoro. L’OCR rilegge anche gli intervalli validi con punteggio basso. La [schermata mensile](docs/images/shiftrail-hours-month.png) e la [settimana selezionata](docs/images/shiftrail-hours-week.png) usano dati sintetici. Risultati e limiti sono in [UI_RELEASE_0_2_2.md](docs/UI_RELEASE_0_2_2.md).
 
 La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Le correzioni OCR sono documentate per [0.1.1](docs/OCR_FIX_0_1_1.md), [0.1.2](docs/OCR_FIX_0_1_2.md), [0.1.3](docs/OCR_FIX_0_1_3.md) e [0.1.4](docs/OCR_FIX_0_1_4.md).

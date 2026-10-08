@@ -7,12 +7,22 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 
 data class EventOptions(
-    val title: String,
+    val title: String = EventFactory.WORK_EVENT_TITLE,
     val location: String = "",
     val description: String = "",
-    val reminderMinutes: Int? = null,
-    val color: Int? = null,
-)
+    val reminderMinutes: Int? = 30,
+    val color: Int? = 0xff1a73e8.toInt(),
+    val restColor: Int? = 0xff0b8043.toInt(),
+    val saveRestDays: Boolean = true,
+) {
+    init {
+        require(reminderMinutes == null || reminderMinutes in 0..10080) { "INVALID_REMINDER" }
+    }
+}
+
+fun ShiftCell.requiresCalendarReview(saveRestDays: Boolean = true): Boolean =
+    if (type == CellType.CODE && code == ShiftParser.REST_CODE && !saveRestDays) false
+    else type == CellType.UNKNOWN || (needsReview && !reviewed)
 
 data class CalendarEvent(
     val date: LocalDate,
@@ -29,6 +39,7 @@ data class CalendarEvent(
 )
 
 object EventFactory {
+    const val WORK_EVENT_TITLE = "Lavoro"
     const val REST_EVENT_TITLE = "Giorno di riposo"
 
     /** Reject gaps and overlaps. Choosing a UTC offset silently would change the user's shift. */
@@ -46,7 +57,13 @@ object EventFactory {
         options: EventOptions,
         zone: ZoneId,
     ): CalendarEvent? {
-        require(!cell.needsReview || cell.reviewed) { "REVIEW_REQUIRED" }
+        if (
+            cell.type == CellType.CODE &&
+                cell.code == ShiftParser.REST_CODE &&
+                !options.saveRestDays
+        )
+            return null
+        require(!cell.requiresCalendarReview(options.saveRestDays)) { "REVIEW_REQUIRED" }
         if (cell.type == CellType.EMPTY) return null
         val allDay = cell.type == CellType.CODE && cell.code == ShiftParser.REST_CODE
         require(allDay || cell.type == CellType.WORK_SHIFT) { "UNKNOWN_SHIFT" }
@@ -70,8 +87,9 @@ object EventFactory {
             require(end > start) { "INVALID_DURATION" }
             // Preserve existing work-event signatures so upgrades do not cause needless updates.
             signature = "${cell.signature()}|$startTime|$endTime|null"
-            title = options.title
+            title = WORK_EVENT_TITLE
         }
+        val color = if (allDay) options.restColor else options.color
         return CalendarEvent(
             cell.date,
             start,
@@ -82,9 +100,9 @@ object EventFactory {
             options.location,
             options.description,
             options.reminderMinutes,
-            options.color,
+            color,
             sha256(
-                "$signature|$start|$end|$title|${options.location}|${options.description}|${options.reminderMinutes}|${options.color}"
+                "$signature|$start|$end|$title|${options.location}|${options.description}|${options.reminderMinutes}|$color"
             ),
         )
     }

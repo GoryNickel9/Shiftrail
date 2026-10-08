@@ -8,7 +8,9 @@ import it.turni.app.data.TurniDatabase
 
 class TurniApplication : Application() {
     val database by lazy {
-        Room.databaseBuilder(this, TurniDatabase::class.java, "turni.db").build()
+        Room.databaseBuilder(this, TurniDatabase::class.java, "turni.db")
+            .addMigrations(TurniDatabase.MIGRATION_1_2)
+            .build()
     }
     val calendar by lazy { CalendarRepository(contentResolver) }
     val sync by lazy { SyncRepository(database, calendar) }

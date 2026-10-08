@@ -12,8 +12,8 @@ android {
         applicationId = "it.turni.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.2.1"
+        versionCode = 8
+        versionName = "0.2.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
@@ -28,9 +28,18 @@ android {
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     lint { abortOnError = true }
     sourceSets.getByName("androidTest").assets.srcDir("../testdata")
+    sourceSets.getByName("androidTest").assets.srcDir("schemas")
 }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
+// Export the current schema before packaging migration-test assets, including on a clean build.
+tasks.configureEach {
+    if (name.startsWith("merge") && name.endsWith("AndroidTestAssets")) {
+        val variant = name.removePrefix("merge").removeSuffix("AndroidTestAssets")
+        dependsOn("ksp${variant}Kotlin")
+    }
+}
 
 dependencies {
     implementation(project(":core"))

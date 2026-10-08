@@ -64,6 +64,22 @@ class ReviewUiTest {
             compose.runOnIdle {
                 state.value =
                     state.value.copy(
+                        settings = state.value.settings.copy(saveRestDays = false),
+                        extraction =
+                            state.value.extraction!!.copy(
+                                table =
+                                    table.copy(cells = listOf(ShiftParser.parse("X", date, 0.5)))
+                            ),
+                    )
+            }
+            compose
+                .onNodeWithText("I riposi sono esclusi dal calendario nelle impostazioni.")
+                .assertIsDisplayed()
+            compose.onNodeWithText("Ho controllato: è corretto").assertDoesNotExist()
+            compose.onNodeWithText("Continua").assertIsEnabled()
+            compose.runOnIdle {
+                state.value =
+                    state.value.copy(
                         extraction =
                             state.value.extraction!!.copy(
                                 table =

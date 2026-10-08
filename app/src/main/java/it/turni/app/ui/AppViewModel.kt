@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
 import it.turni.app.R
 import it.turni.app.TurniApplication
 import it.turni.app.calendar.*
@@ -13,6 +14,8 @@ import it.turni.app.imageprocessing.*
 import it.turni.app.ocr.*
 import it.turni.core.*
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.*
@@ -35,6 +38,9 @@ data class AppState(
     val selectedChanges: Set<LocalDate> = emptySet(),
     val duplicatePhoto: Boolean = false,
     val syncCount: Int? = null,
+    val hoursPeriods: List<WorkPeriod> = emptyList(),
+    val hoursExtras: List<ExtraWorkEntity> = emptyList(),
+    val hoursLoaded: Boolean = false,
 )
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -45,6 +51,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val mutable = MutableStateFlow(AppState())
     val state = mutable.asStateFlow()
     private var upcomingJob: Job? = null
+    private var hoursJob: Job? = null
+    private var hoursMonth = YearMonth.now()
 
     init {
         launchWork {
@@ -69,6 +77,97 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 mutable.update { it.copy(upcoming = value) }
             }
         }
+        watchHours(employee)
+    }
+
+    fun loadHours(month: YearMonth) {
+        if (month == hoursMonth && hoursJob != null) return
+        hoursMonth = month
+        mutable.value.profile?.let { watchHours(it.id) }
+    }
+
+    private fun watchHours(employee: String) {
+        hoursJob?.cancel()
+        val from = hoursMonth.atDay(1).minusDays(1).toString()
+        val until = hoursMonth.atEndOfMonth().toString()
+        mutable.update {
+            it.copy(hoursLoaded = false, hoursPeriods = emptyList(), hoursExtras = emptyList())
+        }
+        hoursJob = viewModelScope.launch {
+            combine(
+                    dao.recordedShifts(employee, from, until),
+                    dao.extraWork(employee, from, until),
+                ) { shifts, extras ->
+                    // A calendar change must not count the same employee/day twice.
+                    val current =
+                        shifts
+                            .groupBy { it.date }
+                            .values
+                            .map { versions ->
+                                versions.maxWith(
+                                    compareBy<ShiftEntity> { it.updatedAt }.thenBy { it.id }
+                                )
+                            }
+                    val periods =
+                        current
+                            .filter { it.type == CellType.WORK_SHIFT.name }
+                            .map {
+                                WorkPeriod(
+                                    it.id,
+                                    LocalDate.parse(it.date),
+                                    LocalTime.parse(requireNotNull(it.startTime)),
+                                    LocalTime.parse(requireNotNull(it.endTime)),
+                                    WorkSource.SCHEDULE,
+                                )
+                            } + extras.map { it.period() }
+                    periods to extras
+                }
+                .catch { error ->
+                    mutable.update {
+                        it.copy(
+                            hoursLoaded = true,
+                            error = errorText(error as? Exception ?: Exception(error)),
+                        )
+                    }
+                }
+                .collect { (periods, extras) ->
+                    mutable.update {
+                        it.copy(hoursPeriods = periods, hoursExtras = extras, hoursLoaded = true)
+                    }
+                }
+        }
+    }
+
+    fun saveExtra(
+        date: LocalDate,
+        start: LocalTime,
+        end: LocalTime,
+        previous: ExtraWorkEntity?,
+        onSaved: () -> Unit,
+    ) = launchWork {
+        val employee = requireNotNull(mutable.value.profile).id
+        require(start != end)
+        require(previous == null || previous.employeeId == employee)
+        val duplicate = dao.findExtra(employee, date.toString(), start.toString(), end.toString())
+        require(duplicate == null || duplicate.id == previous?.id) { "EXTRA_DUPLICATE" }
+        dao.saveExtra(
+            ExtraWorkEntity(
+                previous?.id ?: UUID.randomUUID().toString(),
+                employee,
+                date.toString(),
+                start.toString(),
+                end.toString(),
+                previous?.createdAt ?: System.currentTimeMillis(),
+            )
+        )
+        onSaved()
+    }
+
+    fun removeExtra(extra: ExtraWorkEntity, onRemoved: () -> Unit) = launchWork {
+        val employee = requireNotNull(mutable.value.profile).id
+        require(extra.employeeId == employee)
+        dao.removeExtra(extra.id, employee)
+        onRemoved()
     }
 
     private fun launchWork(block: suspend () -> Unit) {
@@ -96,6 +195,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     R.string.review_required
                 error.message == "INVALID_CROP" -> R.string.invalid_crop
                 error.message == "CALENDAR_UNAVAILABLE" -> R.string.no_calendar
+                error.message == "EXTRA_DUPLICATE" -> R.string.extra_duplicate
                 error.message == "CALENDAR_OWNERSHIP_CHANGED" ||
                     error.message == "MULTIPLE_CALENDAR_MATCHES" -> R.string.calendar_conflict
                 else -> R.string.operation_failed
@@ -110,16 +210,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         mutable.update { it.copy(error = message) }
     }
 
-    fun saveName(name: String, onSaved: () -> Unit) = launchWork {
+    fun saveSettings(name: String, settings: SettingsEntity, onSaved: () -> Unit) = launchWork {
         require(name.isNotBlank() && name.trim().length <= 160)
+        require(settings.reminderMinutes == null || settings.reminderMinutes in 0..10080)
         val profile =
             ProfileEntity(
                 mutable.value.profile?.id ?: UUID.randomUUID().toString(),
                 name.trim(),
                 "",
             )
-        dao.saveProfile(profile)
-        mutable.update { it.copy(profile = profile) }
+        val savedSettings = settings.copy(title = EventFactory.WORK_EVENT_TITLE)
+        app.database.withTransaction {
+            dao.saveProfile(profile)
+            dao.saveSettings(savedSettings)
+        }
+        mutable.update { it.copy(profile = profile, settings = savedSettings) }
         watch(profile.id)
         onSaved()
     }
@@ -282,7 +387,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val profile = requireNotNull(state.profile)
         val result = requireNotNull(state.extraction).table
         require(result.selected != null && result.issues.isEmpty()) { "REVIEW_REQUIRED" }
-        require(result.cells.all { !it.needsReview || it.reviewed }) { "REVIEW_REQUIRED" }
+        require(result.cells.none { it.requiresCalendarReview(state.settings.saveRestDays) }) {
+            "REVIEW_REQUIRED"
+        }
+        require(app.calendar.calendars().any { it.id == calendarId }) { "CALENDAR_UNAVAILABLE" }
         val monday =
             state.confirmedMonday
                 ?: result.cells.firstOrNull()?.date?.with(java.time.DayOfWeek.MONDAY)
@@ -293,11 +401,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     it,
                     emptyList(),
                     EventOptions(
-                        state.settings.title,
+                        EventFactory.WORK_EVENT_TITLE,
                         state.settings.location,
                         state.settings.description,
                         state.settings.reminderMinutes,
                         state.settings.eventColor,
+                        state.settings.restColor,
+                        state.settings.saveRestDays,
                     ),
                     ZoneId.systemDefault(),
                 )

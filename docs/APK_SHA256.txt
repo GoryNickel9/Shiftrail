@@ -1,1 +1,1 @@
-0efd76cdada247f4325ffa51b0955c3711823640699bb462cf1c619a7d1e6419  artifacts/Shiftrail-0.2.1.apk
+76479ee4e9197f5f66f38373ece0cf261523f1e528628adafaf3b66453bdee66  artifacts/Shiftrail-0.2.2.apk
