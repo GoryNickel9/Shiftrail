@@ -4,6 +4,12 @@ App Android nativa che legge la tua riga da una foto del tabellone settimanale e
 
 Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, coroutine, ViewModel/StateFlow e Navigation Compose. Nessun account dell’app, backend o API AI a pagamento.
 
+## Download e release
+
+[Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
+
+Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i dati. Dalla versione 0.3.0 Shiftrail controlla automaticamente le nuove release una volta al giorno; il controllo manuale è in **Impostazioni → Aggiornamenti**. Download e installazione richiedono la tua scelta. Protocollo, firma e pubblicazione sono descritti in [aggiornamenti](docs/UPDATES.md).
+
 <img src="docs/images/shiftrail-home.png" alt="Home Shiftrail su Android 15" width="240"> <img src="docs/images/shiftrail-review-ready.png" alt="Revisione con letture pronte e pulsante fisso" width="240"> <img src="docs/images/shiftrail-review-large-font.png" alt="Revisione con caratteri al 160%" width="240">
 
 ## Utilizzo
@@ -16,7 +22,7 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 `19-01` produce un evento **Lavoro** dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e, se abilitata nelle impostazioni, produce un evento di intera giornata intitolato **Giorno di riposo**. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
 
-**Ore** mostra il totale di un mese o di una sua settimana, distinguendo i turni salvati dal lavoro extra. L’extra si inserisce con data, inizio e fine; può essere modificato o eliminato e resta locale a Shiftrail. I turni notturni sono suddivisi a mezzanotte quando attraversano il confine del periodo. Le ore importate derivano dal programma salvato, non da una rilevazione delle presenze. Vedi [conteggio ore](docs/WORKING_HOURS.md).
+**Ore** mostra il totale di un mese o di una sua settimana, distinguendo i turni salvati dal lavoro extra. Ogni turno mostra inizio e fine modificabili: salvare un turno importato aggiorna anche l’evento nel calendario e ricalcola le ore. L’extra si inserisce con data, inizio e fine; può essere modificato o eliminato e resta locale a Shiftrail. I turni notturni sono suddivisi a mezzanotte quando attraversano il confine del periodo. Le ore importate derivano dal programma salvato, non da una rilevazione delle presenze. Vedi [conteggio ore](docs/WORKING_HOURS.md).
 
 ## Build
 
@@ -33,7 +39,7 @@ Su Windows usa `gradlew.bat`. L’APK è `app/build/outputs/apk/debug/app-debug.
 
 In questo ambiente Windows Java restituisce `Unable to establish loopback connection` sulle socket AF_UNIX. `scripts/verify-windows.ps1 -Jdk "C:\Program Files\Java\jdk-21"` applica un workaround soltanto ai processi figli, esegue build/test/lint e ripristina le variabili d’ambiente. Non serve su un ambiente sano.
 
-Il pacchetto consegnato è `artifacts/Shiftrail-0.2.2.apk` ed è firmato con la stessa chiave di sviluppo delle versioni precedenti. Una distribuzione pubblica richiede una chiave release privata e la verifica delle policy del canale di distribuzione.
+L’APK distribuito su GitHub è prodotto da `assembleRelease`, è non debuggabile e mantiene il certificato delle versioni precedenti per consentire l’aggiornamento delle installazioni esistenti. La chiave privata rimane locale. `scripts/publish-release.ps1` verifica l’impronta prima della pubblicazione; i build debug della CI servono ai test. Dettagli in [UPDATES.md](docs/UPDATES.md).
 
 ## Architettura e test
 
@@ -59,7 +65,7 @@ La versione 0.1.4 usa la grammatica degli orari per proporre il recupero di un c
 
 CAMERA serve soltanto alla cattura. Il Photo Picker non richiede accesso all’intera galleria. READ_CALENDAR e WRITE_CALENDAR sono richiesti quando si continua dalla revisione. Le catture temporanee vengono rimosse dopo la lettura e all’avvio successivo in caso di interruzione. L’immagine viene conservata in memoria durante la revisione; l’utente può salvarne una copia tramite il selettore Android.
 
-Room conserva profilo, alias, legenda, impostazioni, fingerprint e turni sincronizzati. Le foto, il testo OCR degli altri dipendenti e i token non vengono salvati nel database. Backup Android disattivato. Il manifest rimuove INTERNET e ACCESS_NETWORK_STATE dalle dipendenze: l’app non carica le immagini. Il provider del calendario può sincronizzare gli eventi con Google o altri account secondo le impostazioni del dispositivo.
+Room conserva profilo, alias, legenda, impostazioni, fingerprint e associazioni dei turni sincronizzati. Le foto, il testo OCR degli altri dipendenti e i token non vengono salvati nel database. Backup Android disattivato. INTERNET serve al controllo e al download delle GitHub Releases; foto, testo OCR, profilo e calendari non vengono inviati all’updater. Il provider del calendario può sincronizzare gli eventi con Google o altri account secondo le impostazioni del dispositivo.
 
 ## Calendario e limiti
 
@@ -78,5 +84,7 @@ La versione 0.2.0 introduce Shiftrail, l’immagine della home, la navigazione i
 La versione 0.2.1 elimina Storico e la schermata di diagnostica, limita Impostazioni al nome e cognome e interpreta soltanto `X` come Giorno di riposo. Gli eventi di riposo sono intera giornata; gli altri turni mantengono orari e identità. Le vecchie legende non influenzano più l’importazione. Dettagli e verifiche sono in [UI_RELEASE_0_2_1.md](docs/UI_RELEASE_0_2_1.md).
 
 La versione 0.2.2 aggiunge Ore, extra manuali, preferenze del calendario e migrazione Room 1→2. PC Sync viene mostrato come Google Calendar; i turni si chiamano Lavoro. L’OCR rilegge anche gli intervalli validi con punteggio basso. La [schermata mensile](docs/images/shiftrail-hours-month.png) e la [settimana selezionata](docs/images/shiftrail-hours-week.png) usano dati sintetici. Risultati e limiti sono in [UI_RELEASE_0_2_2.md](docs/UI_RELEASE_0_2_2.md).
+
+La versione 0.2.3 permette di modificare gli orari dei turni importati da Ore e aggiorna direttamente il calendario associato. Il salvataggio verifica l’accesso in scrittura tramite l’ID del calendario: non richiede che sia visibile o che conservi il nome PC Sync. I dettagli sono in [sincronizzazione calendario](docs/CALENDAR_SYNC.md).
 
 La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Le correzioni OCR sono documentate per [0.1.1](docs/OCR_FIX_0_1_1.md), [0.1.2](docs/OCR_FIX_0_1_2.md), [0.1.3](docs/OCR_FIX_0_1_3.md) e [0.1.4](docs/OCR_FIX_0_1_4.md).

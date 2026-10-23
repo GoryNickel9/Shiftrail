@@ -5,8 +5,9 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
+import it.turni.app.calendar.CalendarMutation
 import it.turni.app.data.*
-import it.turni.core.WorkingHours
+import it.turni.core.*
 import java.io.File
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -42,6 +43,8 @@ class HoursUiTest {
         val profile = requireNotNull(runBlocking { dao.profile() })
         val employee = profile.id
         val ids = listOf("hours-incoming", "hours-night", "hours-old-calendar", "hours-rest")
+        val primary = CalendarFixture("hours-primary")
+        val secondary = CalendarFixture("hours-secondary")
         try {
             runBlocking {
                 dao.saveWeek(
@@ -53,7 +56,7 @@ class HoursUiTest {
                         "hours-test",
                     )
                 )
-                fun shift(
+                suspend fun shift(
                     id: String,
                     date: String,
                     start: String?,
@@ -61,8 +64,34 @@ class HoursUiTest {
                     calendar: Long,
                     updated: Long,
                     code: String? = null,
-                ) =
-                    ShiftEntity(
+                ): ShiftEntity {
+                    val cell =
+                        ShiftParser.parse(code ?: "$start-$end", java.time.LocalDate.parse(date))
+                    val event =
+                        requireNotNull(
+                            EventFactory.create(
+                                cell,
+                                emptyList(),
+                                EventOptions(),
+                                java.time.ZoneId.systemDefault(),
+                            )
+                        )
+                    val eventId =
+                        requireNotNull(
+                            app.calendar
+                                .apply(
+                                    calendar,
+                                    listOf(
+                                        CalendarMutation(
+                                            cell.date,
+                                            event,
+                                            null,
+                                            eventMarker(employee, cell.date, calendar),
+                                        )
+                                    ),
+                                )[cell.date]
+                        )
+                    return ShiftEntity(
                         id,
                         "hours-test-week",
                         employee,
@@ -73,18 +102,32 @@ class HoursUiTest {
                         code,
                         if (code == null) "WORK_SHIFT" else "CODE",
                         0.95,
-                        calendar * 10,
+                        eventId,
                         calendar,
                         id,
                         1,
                         updated,
                     )
+                }
                 dao.saveShift(
-                    shift(ids[0], month.atDay(1).minusDays(1).toString(), "23:00", "02:00", 1001, 2)
+                    shift(
+                        ids[0],
+                        month.atDay(1).minusDays(1).toString(),
+                        "23:00",
+                        "02:00",
+                        primary.id,
+                        2,
+                    )
                 )
-                dao.saveShift(shift(ids[1], month.atDay(5).toString(), "19:00", "01:00", 1001, 2))
-                dao.saveShift(shift(ids[2], month.atDay(5).toString(), "18:00", "01:00", 1002, 1))
-                dao.saveShift(shift(ids[3], month.atDay(6).toString(), null, null, 1001, 2, "X"))
+                dao.saveShift(
+                    shift(ids[1], month.atDay(5).toString(), "19:00", "01:00", primary.id, 2)
+                )
+                dao.saveShift(
+                    shift(ids[2], month.atDay(5).toString(), "18:00", "01:00", secondary.id, 1)
+                )
+                dao.saveShift(
+                    shift(ids[3], month.atDay(6).toString(), null, null, primary.id, 2, "X")
+                )
             }
             waitForHome(profile.name)
             compose.onNodeWithText("Ore").performClick()
@@ -98,13 +141,27 @@ class HoursUiTest {
             compose.onNodeWithTag("extra_end").performScrollTo().performTextInput("01:00")
             compose.onNodeWithText("Salva").performClick()
             waitForTotal("11 h 00 min")
-            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Modifica"))
-            compose.onNodeWithText("Modifica").performClick()
+            val extraId =
+                requireNotNull(
+                        runBlocking {
+                            dao.findExtra(employee, month.atDay(8).toString(), "22:00", "01:00")
+                        }
+                    )
+                    .id
+            compose
+                .onNode(hasScrollToIndexAction())
+                .performScrollToNode(hasTestTag("edit_$extraId"))
+            compose.onNodeWithTag("edit_$extraId").performClick()
             compose.onNodeWithTag("extra_start").performTextClearance()
             compose.onNodeWithTag("extra_start").performTextInput("22:30")
+            compose.onNodeWithTag("extra_start").assertTextContains("22:30")
+            compose.waitForIdle()
             compose.activityRule.scenario.recreate()
             compose.onNodeWithTag("extra_start").assertTextContains("22:30")
             compose.onNodeWithText("Salva").performClick()
+            compose.waitUntil(15000) {
+                compose.onAllNodesWithText("Modifica lavoro extra").fetchSemanticsNodes().isEmpty()
+            }
             compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
             waitForTotal("10 h 30 min")
             saveScreenshot("hours-month.png")
@@ -163,6 +220,8 @@ class HoursUiTest {
             compose.onNodeWithTag("next_month").performClick()
             waitForTotal("8 h 00 min")
         } finally {
+            primary.close()
+            secondary.close()
             runBlocking {
                 ids.forEach { dao.removeShift(it) }
                 dao.findExtra(employee, month.atDay(8).toString(), "22:30", "01:00")?.let {

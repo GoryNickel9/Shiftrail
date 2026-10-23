@@ -4,6 +4,8 @@ import androidx.room.withTransaction
 import it.turni.app.data.*
 import it.turni.core.*
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -19,6 +21,58 @@ data class PreparedSync(
 
 class SyncRepository(private val db: TurniDatabase, private val calendar: CalendarRepository) {
     private val mutex = Mutex()
+
+    suspend fun updateHours(
+        employee: String,
+        shiftId: String,
+        start: LocalTime,
+        end: LocalTime,
+        options: EventOptions,
+        zone: ZoneId,
+    ) = mutex.withLock {
+        require(start != end) { "INVALID_DURATION" }
+        val old = requireNotNull(db.dao().shift(shiftId, employee))
+        val originalDate = LocalDate.parse(old.date)
+        val marker = eventMarker(employee, originalDate, old.calendarId)
+        val direct = calendar.event(old.calendarEventId)
+        if (direct != null)
+            require(direct.calendarId == old.calendarId && direct.description.contains(marker)) {
+                "CALENDAR_OWNERSHIP_CHANGED"
+            }
+        val eventId = direct?.id ?: calendar.findMarker(old.calendarId, marker)
+        val provider = direct ?: eventId?.let { calendar.event(it) }
+        require(
+            old.type == CellType.WORK_SHIFT.name ||
+                (old.type == CellType.CODE.name && provider?.allDay == false)
+        )
+        provider?.let {
+            val providerStart =
+                java.time.Instant.ofEpochMilli(it.start).atZone(zone).toLocalDateTime()
+            val providerEnd = java.time.Instant.ofEpochMilli(it.end).atZone(zone).toLocalDateTime()
+            require(providerEnd < providerStart.plusDays(1)) { "CALENDAR_EDIT_DURATION" }
+        }
+        val date =
+            provider?.let { java.time.Instant.ofEpochMilli(it.start).atZone(zone).toLocalDate() }
+                ?: originalDate
+        val cell = ShiftParser.parse("$start-$end", date).copy(reviewed = true)
+        val event = requireNotNull(EventFactory.create(cell, emptyList(), options, zone))
+        val ids =
+            calendar.apply(old.calendarId, listOf(CalendarMutation(date, event, eventId, marker)))
+        // Keep the imported week, source hash and shift ID when editing a single day.
+        db.dao()
+            .saveShift(
+                old.copy(
+                    startTime = start.toString(),
+                    endTime = end.toString(),
+                    endNextDay = end < start,
+                    type = CellType.WORK_SHIFT.name,
+                    code = null,
+                    calendarEventId = requireNotNull(ids[date]),
+                    contentSignature = event.contentSignature,
+                    updatedAt = maxOf(System.currentTimeMillis(), old.updatedAt + 1),
+                )
+            )
+    }
 
     suspend fun prepare(
         employee: String,

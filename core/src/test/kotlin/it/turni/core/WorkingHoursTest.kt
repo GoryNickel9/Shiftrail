@@ -97,4 +97,27 @@ class WorkingHoursTest {
         val work = period("same", "2026-10-05", "12:00", "15:00")
         WorkingHours.summarize(listOf(work, work), october)
     }
+
+    @Test
+    fun explicitCalendarEndDatesPreserveWholeDaysAcrossMonths() {
+        val work =
+            WorkPeriod(
+                "calendar",
+                LocalDate.of(2026, 10, 31),
+                LocalTime.NOON,
+                LocalTime.NOON,
+                WorkSource.SCHEDULE,
+                LocalDate.of(2026, 11, 2),
+            )
+        assertEquals(720L, WorkingHours.summarize(listOf(work), october).totalMinutes)
+        assertEquals(
+            2160L,
+            WorkingHours.summarize(
+                    listOf(work),
+                    HoursWindow(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30)),
+                )
+                .totalMinutes,
+        )
+        assertThrows(IllegalArgumentException::class.java) { work.copy(endDate = work.date) }
+    }
 }

@@ -151,6 +151,9 @@ interface TurniDao {
 
     @Upsert suspend fun saveShift(shift: ShiftEntity)
 
+    @Query("SELECT * FROM shifts WHERE id = :id AND employeeId = :employee")
+    suspend fun shift(id: String, employee: String): ShiftEntity?
+
     @Query("DELETE FROM shifts WHERE id = :id") suspend fun removeShift(id: String)
 
     @Query(
@@ -161,6 +164,9 @@ interface TurniDao {
         fromDate: String,
         untilDate: String,
     ): Flow<List<ShiftEntity>>
+
+    @Query("SELECT * FROM shifts WHERE employeeId = :employee ORDER BY date")
+    fun allRecordedShifts(employee: String): Flow<List<ShiftEntity>>
 
     @Query(
         "SELECT * FROM extra_work WHERE employeeId = :employee AND date BETWEEN :fromDate AND :untilDate ORDER BY date, startTime"

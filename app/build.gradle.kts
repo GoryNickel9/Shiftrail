@@ -12,8 +12,8 @@ android {
         applicationId = "it.turni.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.2.2"
+        versionCode = 10
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
@@ -24,6 +24,12 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    buildTypes {
+        getByName("release") {
+            // Keep the installed APK's signing identity; the private key stays on this machine.
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     lint { abortOnError = true }

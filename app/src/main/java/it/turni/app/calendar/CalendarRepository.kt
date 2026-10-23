@@ -4,9 +4,15 @@ import android.content.ContentProviderOperation
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.provider.CalendarContract
 import it.turni.core.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.withContext
 
 data class WritableCalendar(val id: Long, val name: String, val account: String)
@@ -30,6 +36,23 @@ data class CalendarMutation(
 )
 
 class CalendarRepository(private val resolver: ContentResolver) {
+    fun changes() = callbackFlow {
+        val observer =
+            object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    trySend(Unit)
+                }
+
+                override fun onChange(selfChange: Boolean, uri: android.net.Uri?) {
+                    trySend(Unit)
+                }
+            }
+        resolver.registerContentObserver(CalendarContract.CONTENT_URI, true, observer)
+        trySend(Unit)
+        awaitClose { resolver.unregisterContentObserver(observer) }
+    }
+        .conflate()
+
     suspend fun calendars(): List<WritableCalendar> =
         withContext(Dispatchers.IO) {
             resolver
@@ -68,39 +91,45 @@ class CalendarRepository(private val resolver: ContentResolver) {
                 .orEmpty()
         }
 
-    suspend fun event(id: Long): ProviderEvent? =
+    suspend fun event(id: Long): ProviderEvent? = events(listOf(id))[id]
+
+    suspend fun events(ids: List<Long>): Map<Long, ProviderEvent> =
         withContext(Dispatchers.IO) {
-            resolver
-                .query(
-                    ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id),
-                    arrayOf(
-                        CalendarContract.Events._ID,
-                        CalendarContract.Events.CALENDAR_ID,
-                        CalendarContract.Events.DESCRIPTION,
-                        CalendarContract.Events.DTSTART,
-                        CalendarContract.Events.DTEND,
-                        CalendarContract.Events.TITLE,
-                        CalendarContract.Events.EVENT_LOCATION,
-                        CalendarContract.Events.ALL_DAY,
-                    ),
-                    "${CalendarContract.Events.DELETED} = 0",
-                    null,
-                    null,
-                )
-                ?.use { cursor ->
-                    if (!cursor.moveToFirst()) null
-                    else
-                        ProviderEvent(
-                            cursor.getLong(0),
-                            cursor.getLong(1),
-                            cursor.getString(2).orEmpty(),
-                            cursor.getLong(3),
-                            cursor.getLong(4),
-                            cursor.getString(5).orEmpty(),
-                            cursor.getString(6).orEmpty(),
-                            cursor.getInt(7) == 1,
-                        )
-                }
+            buildMap {
+                for (chunk in ids.distinct().chunked(400)) resolver
+                    .query(
+                        CalendarContract.Events.CONTENT_URI,
+                        arrayOf(
+                            CalendarContract.Events._ID,
+                            CalendarContract.Events.CALENDAR_ID,
+                            CalendarContract.Events.DESCRIPTION,
+                            CalendarContract.Events.DTSTART,
+                            CalendarContract.Events.DTEND,
+                            CalendarContract.Events.TITLE,
+                            CalendarContract.Events.EVENT_LOCATION,
+                            CalendarContract.Events.ALL_DAY,
+                        ),
+                        "${CalendarContract.Events.DELETED} = 0 AND ${CalendarContract.Events._ID} IN (${chunk.joinToString { "?" }})",
+                        chunk.map(Long::toString).toTypedArray(),
+                        null,
+                    )
+                    ?.use { cursor ->
+                        while (cursor.moveToNext()) {
+                            val event =
+                                ProviderEvent(
+                                    cursor.getLong(0),
+                                    cursor.getLong(1),
+                                    cursor.getString(2).orEmpty(),
+                                    cursor.getLong(3),
+                                    cursor.getLong(4),
+                                    cursor.getString(5).orEmpty(),
+                                    cursor.getString(6).orEmpty(),
+                                    cursor.getInt(7) == 1,
+                                )
+                            put(event.id, event)
+                        }
+                    }
+            }
         }
 
     suspend fun findMarker(calendar: Long, marker: String): Long? =
@@ -133,7 +162,24 @@ class CalendarRepository(private val resolver: ContentResolver) {
         mutations: List<CalendarMutation>,
     ): Map<java.time.LocalDate, Long?> =
         withContext(Dispatchers.IO) {
-            require(calendars().any { it.id == calendar }) { "CALENDAR_UNAVAILABLE" }
+            // A linked calendar can be renamed or hidden after the user imports a shift.
+            val writable =
+                resolver
+                    .query(
+                        ContentUris.withAppendedId(
+                            CalendarContract.Calendars.CONTENT_URI,
+                            calendar,
+                        ),
+                        arrayOf(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL),
+                        null,
+                        null,
+                        null,
+                    )
+                    ?.use { cursor ->
+                        cursor.moveToFirst() &&
+                            cursor.getInt(0) >= CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR
+                    } ?: false
+            require(writable) { "CALENDAR_NOT_WRITABLE" }
             val operations = arrayListOf<ContentProviderOperation>()
             val indices = mutableMapOf<java.time.LocalDate, Int>()
             for (mutation in mutations) {

@@ -8,6 +8,10 @@ Room v2 esporta lo schema nel repository e impone una relazione settimana→turn
 
 La navigazione è Home, Ore, Impostazioni, Camera, Crop, Review, Calendari, Sync e Risultato. Impostazioni modifica nome, preavviso, due colori e inclusione dei riposi. `WorkingHours` calcola intervalli e totali senza Android; il ViewModel osserva turni salvati ed extra tramite Flow e distingue l’ultima versione dello stesso giorno in calendari diversi. Il risultato OCR non sopravvive alla morte del processo: l’utente deve importare nuovamente la foto. Profilo, impostazioni e turni sincronizzati restano in Room. Le tabelle precedenti restano compatibili, ma gli alias e le legende non partecipano alle nuove importazioni.
 
+Dalla 0.3.0, Ore combina Room con le notifiche del Calendar Provider e un segnale di ripresa dell’attività. `CalendarHours` proietta gli eventi associati in `WorkPeriod`, usando gli orari correnti e una data di fine esplicita; non scrive né al calendario né al database durante il conteggio. Se il permesso di lettura manca, la UI segnala che mostra il programma salvato. Il contratto del [ContentObserver](https://developer.android.com/reference/android/database/ContentObserver) gestisce gli aggiornamenti mentre il processo è attivo; la nuova lettura in `onResume` copre il ritorno dal calendario e la riapertura del processo.
+
+`UpdateRepository` gestisce manifest, download HTTPS e verifica dell’APK; il ViewModel coordina controllo e dialoghi separatamente dalle operazioni OCR/calendario. `ReleaseUpdate` contiene i controlli deterministici sui metadati nel modulo core. Il FileProvider espone soltanto la cartella privata degli aggiornamenti. Il protocollo e i requisiti della firma sono in [UPDATES.md](UPDATES.md).
+
 ## Decisioni
 
 Kotlin e Android nativo rispettano le API richieste e consentono test JVM indipendenti. Compose riduce la duplicazione dei form; non viene introdotto un framework di dependency injection per cinque adattatori. Il crop a quattro angoli usa la trasformazione proiettiva Android: evita una dipendenza OpenCV prima di avere foto reali su cui misurare il beneficio.

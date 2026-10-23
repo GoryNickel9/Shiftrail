@@ -45,6 +45,13 @@ fun TurniApp(vm: AppViewModel) {
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: "home"
     ShiftrailTheme {
+        if (
+            state.loaded &&
+                !state.busy &&
+                route in listOf("home", "settings") &&
+                state.updater.showDialog
+        )
+            UpdateDialog(state.updater, vm)
         Scaffold(
             topBar = {
                 TopAppBar(

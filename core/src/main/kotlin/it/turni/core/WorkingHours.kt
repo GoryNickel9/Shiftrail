@@ -19,16 +19,17 @@ data class WorkPeriod(
     val start: LocalTime,
     val end: LocalTime,
     val source: WorkSource,
+    val endDate: LocalDate? = null,
 ) {
     init {
-        require(start != end) { "INVALID_DURATION" }
+        require(endDateTime > startDateTime) { "INVALID_DURATION" }
     }
 
     val startDateTime: LocalDateTime
         get() = date.atTime(start)
 
     val endDateTime: LocalDateTime
-        get() = date.plusDays(if (end < start) 1 else 0).atTime(end)
+        get() = (endDate ?: date.plusDays(if (end < start) 1 else 0)).atTime(end)
 }
 
 data class HoursEntry(val period: WorkPeriod, val minutes: Long)

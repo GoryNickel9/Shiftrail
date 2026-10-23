@@ -122,11 +122,12 @@ class CalendarIntegrationTest {
                     assertEquals("Turni test", it.getString(0))
                 }
             try {
-                provider.apply(otherId, emptyList())
-                fail("Other calendars must not be writable through Shiftrail")
+                provider.apply(readOnlyId, emptyList())
+                fail("Read-only calendars must not be writable through Shiftrail")
             } catch (error: IllegalArgumentException) {
-                assertEquals("CALENDAR_UNAVAILABLE", error.message)
+                assertEquals("CALENDAR_NOT_WRITABLE", error.message)
             }
+            assertTrue(provider.apply(otherId, emptyList()).isEmpty())
             fun assertOptions(event: Long, minutes: Int?, color: Int?) {
                 resolver
                     .query(
@@ -257,6 +258,159 @@ class CalendarIntegrationTest {
                 )
             sync.commit(removedOptions, setOf(monday))
             assertOptions(eventId, null, null)
+            val beforeEdit = requireNotNull(db.dao().shift(saved.id, "employee"))
+            val hoursOptions = customOptions.copy(reminderMinutes = null, color = null)
+            try {
+                sync.updateHours(
+                    "employee",
+                    saved.id,
+                    java.time.LocalTime.NOON,
+                    java.time.LocalTime.NOON,
+                    hoursOptions,
+                    ZoneId.of("Europe/Rome"),
+                )
+                fail("Equal times must be rejected")
+            } catch (_: IllegalArgumentException) {
+                assertEquals(beforeEdit, db.dao().shift(saved.id, "employee"))
+            }
+            sync.updateHours(
+                "employee",
+                saved.id,
+                java.time.LocalTime.of(20, 30),
+                java.time.LocalTime.of(1, 0),
+                hoursOptions,
+                ZoneId.of("Europe/Rome"),
+            )
+            val afterEdit = requireNotNull(db.dao().shift(saved.id, "employee"))
+            assertEquals(eventId, afterEdit.calendarEventId)
+            assertEquals(beforeEdit.weekId, afterEdit.weekId)
+            assertEquals(beforeEdit.createdAt, afterEdit.createdAt)
+            assertTrue(afterEdit.updatedAt > beforeEdit.updatedAt)
+            assertEquals("20:30", afterEdit.startTime)
+            assertEquals("01:00", afterEdit.endTime)
+            assertTrue(afterEdit.endNextDay)
+            assertEquals(16200000L, provider.event(eventId)!!.let { it.end - it.start })
+            assertOptions(eventId, null, null)
+            val reimportEdited =
+                sync.prepare(
+                    "employee",
+                    monday,
+                    id,
+                    "edited",
+                    cells("20:30-01:00"),
+                    events("20:30-01:00", hoursOptions),
+                )
+            assertEquals(ChangeKind.UNCHANGED, reimportEdited.changes.single().kind)
+            fun calendarValues(values: ContentValues) {
+                assertEquals(
+                    1,
+                    resolver.update(
+                        calendarUri,
+                        values,
+                        "${CalendarContract.Calendars._ID} = ?",
+                        arrayOf(id.toString()),
+                    ),
+                )
+            }
+            calendarValues(
+                ContentValues().apply {
+                    put(CalendarContract.Calendars.NAME, "renamed-work-calendar")
+                    put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "Lavoro")
+                }
+            )
+            assertFalse(provider.calendars().any { it.id == id })
+            sync.updateHours(
+                "employee",
+                saved.id,
+                java.time.LocalTime.of(21, 0),
+                java.time.LocalTime.of(1, 0),
+                hoursOptions,
+                ZoneId.of("Europe/Rome"),
+            )
+            assertEquals(14400000L, provider.event(eventId)!!.let { it.end - it.start })
+            calendarValues(
+                ContentValues().apply {
+                    put(CalendarContract.Calendars.VISIBLE, 0)
+                }
+            )
+            sync.updateHours(
+                "employee",
+                saved.id,
+                java.time.LocalTime.of(22, 0),
+                java.time.LocalTime.of(1, 0),
+                hoursOptions,
+                ZoneId.of("Europe/Rome"),
+            )
+            assertEquals(10800000L, provider.event(eventId)!!.let { it.end - it.start })
+            val beforeReadOnly = requireNotNull(db.dao().shift(saved.id, "employee"))
+            val eventBeforeReadOnly = provider.event(eventId)
+            calendarValues(
+                ContentValues().apply {
+                    put(
+                        CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+                        CalendarContract.Calendars.CAL_ACCESS_READ,
+                    )
+                }
+            )
+            try {
+                sync.updateHours(
+                    "employee",
+                    saved.id,
+                    java.time.LocalTime.of(23, 0),
+                    java.time.LocalTime.of(1, 0),
+                    hoursOptions,
+                    ZoneId.of("Europe/Rome"),
+                )
+                fail("A read-only calendar must not update the event or local hours")
+            } catch (error: IllegalArgumentException) {
+                assertEquals("CALENDAR_NOT_WRITABLE", error.message)
+            }
+            assertEquals(beforeReadOnly, db.dao().shift(saved.id, "employee"))
+            assertEquals(eventBeforeReadOnly, provider.event(eventId))
+            calendarValues(
+                ContentValues().apply {
+                    put(
+                        CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+                        CalendarContract.Calendars.CAL_ACCESS_OWNER,
+                    )
+                }
+            )
+            val movedDay = monday.plusDays(7)
+            val convertedRest = requireNotNull(db.dao().shift(saved.id, "employee"))
+            db.dao()
+                .saveShift(
+                    convertedRest.copy(
+                        type = CellType.CODE.name,
+                        code = "X",
+                        startTime = null,
+                        endTime = null,
+                    )
+                )
+            val movedStart =
+                movedDay.atTime(20, 0).atZone(ZoneId.of("Europe/Rome")).toInstant().toEpochMilli()
+            resolver.update(
+                ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId),
+                ContentValues().apply {
+                    put(CalendarContract.Events.DTSTART, movedStart)
+                    put(CalendarContract.Events.DTEND, movedStart + 10800000L)
+                },
+                null,
+                null,
+            )
+            sync.updateHours(
+                "employee",
+                saved.id,
+                java.time.LocalTime.of(21, 0),
+                java.time.LocalTime.of(23, 0),
+                hoursOptions,
+                ZoneId.of("Europe/Rome"),
+            )
+            assertEquals(CellType.WORK_SHIFT.name, db.dao().shift(saved.id, "employee")!!.type)
+            assertNull(db.dao().shift(saved.id, "employee")!!.code)
+            assertEquals(
+                movedDay.atTime(21, 0).atZone(ZoneId.of("Europe/Rome")).toInstant().toEpochMilli(),
+                provider.event(eventId)!!.start,
+            )
             val missing = sync.prepare("employee", monday, id, "hash3", cells(""), emptyList())
             assertEquals(ChangeKind.MISSING, missing.changes.single().kind)
             sync.commit(missing, emptySet())

@@ -1,17 +1,24 @@
 package it.turni.app.ui
 
+import android.Manifest
 import android.app.Application
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
+import it.turni.app.BuildConfig
 import it.turni.app.R
 import it.turni.app.TurniApplication
 import it.turni.app.calendar.*
 import it.turni.app.data.*
 import it.turni.app.imageprocessing.*
 import it.turni.app.ocr.*
+import it.turni.app.update.UpdateState
 import it.turni.core.*
 import java.time.LocalDate
 import java.time.LocalTime
@@ -41,6 +48,8 @@ data class AppState(
     val hoursPeriods: List<WorkPeriod> = emptyList(),
     val hoursExtras: List<ExtraWorkEntity> = emptyList(),
     val hoursLoaded: Boolean = false,
+    val hoursCalendarAvailable: Boolean = false,
+    val updater: UpdateState = UpdateState(),
 )
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -53,6 +62,114 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var upcomingJob: Job? = null
     private var hoursJob: Job? = null
     private var hoursMonth = YearMonth.now()
+    private val calendarRefresh = MutableStateFlow(0)
+    private var updateJob: Job? = null
+
+    fun refreshCalendar() {
+        if (hoursJob?.isCompleted == true) mutable.value.profile?.let { watchHours(it.id) }
+        else calendarRefresh.update { it + 1 }
+    }
+
+    fun checkUpdates(automatic: Boolean = false) {
+        if (updateJob?.isActive == true || mutable.value.updater.downloading) return
+        if (automatic && !app.updater.automaticCheckDue()) return
+        updateJob = viewModelScope.launch {
+            mutable.update { it.copy(updater = it.updater.copy(checking = true, message = null)) }
+            try {
+                val latest = app.updater.check()
+                val release = latest?.takeIf {
+                    it.isCompatibleUpdate(
+                        BuildConfig.VERSION_CODE.toLong(),
+                        Build.VERSION.SDK_INT,
+                    )
+                }
+                mutable.update {
+                    it.copy(
+                        updater =
+                            UpdateState(
+                                release = release,
+                                showDialog = release != null,
+                                message =
+                                    if (release == null && !automatic)
+                                        app.getString(
+                                            when {
+                                                latest == null -> R.string.update_no_release
+                                                latest.versionCode > BuildConfig.VERSION_CODE &&
+                                                    latest.minSdk > Build.VERSION.SDK_INT ->
+                                                    R.string.update_incompatible
+                                                else -> R.string.update_current
+                                            }
+                                        )
+                                    else null,
+                            )
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                mutable.update {
+                    it.copy(
+                        updater =
+                            it.updater.copy(
+                                checking = false,
+                                message =
+                                    if (automatic) null
+                                    else app.getString(R.string.update_check_failed),
+                            )
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissUpdate() {
+        mutable.update { it.copy(updater = it.updater.copy(showDialog = false)) }
+    }
+
+    fun showUpdate() {
+        mutable.update { it.copy(updater = it.updater.copy(showDialog = true)) }
+    }
+
+    fun downloadUpdate() {
+        if (updateJob?.isActive == true) return
+        val release = mutable.value.updater.release ?: return
+        updateJob = viewModelScope.launch {
+            mutable.update {
+                it.copy(updater = it.updater.copy(downloading = true, message = null))
+            }
+            try {
+                app.updater.download(release)
+                mutable.update {
+                    it.copy(updater = it.updater.copy(downloading = false, ready = true))
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                mutable.update {
+                    it.copy(
+                        updater =
+                            it.updater.copy(
+                                downloading = false,
+                                message = app.getString(R.string.update_download_failed),
+                            )
+                    )
+                }
+            }
+        }
+    }
+
+    fun installUpdate() {
+        try {
+            app.startActivity(app.updater.installIntent().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) {
+            mutable.update {
+                it.copy(
+                    updater =
+                        it.updater.copy(message = app.getString(R.string.update_install_failed))
+                )
+            }
+        }
+    }
 
     init {
         launchWork {
@@ -81,11 +198,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadHours(month: YearMonth) {
-        if (month == hoursMonth && hoursJob != null) return
+        if (month == hoursMonth && hoursJob?.isActive == true) return
         hoursMonth = month
         mutable.value.profile?.let { watchHours(it.id) }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun watchHours(employee: String) {
         hoursJob?.cancel()
         val from = hoursMonth.atDay(1).minusDays(1).toString()
@@ -95,9 +213,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         hoursJob = viewModelScope.launch {
             combine(
-                    dao.recordedShifts(employee, from, until),
+                    dao.allRecordedShifts(employee),
                     dao.extraWork(employee, from, until),
-                ) { shifts, extras ->
+                    calendarRefresh.flatMapLatest {
+                        if (
+                            ContextCompat.checkSelfPermission(
+                                app,
+                                Manifest.permission.READ_CALENDAR,
+                            ) == PackageManager.PERMISSION_GRANTED
+                        )
+                            app.calendar.changes().map { true }
+                        else flowOf(false)
+                    },
+                ) { shifts, extras, calendarAvailable ->
                     // A calendar change must not count the same employee/day twice.
                     val current =
                         shifts
@@ -108,19 +236,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                                     compareBy<ShiftEntity> { it.updatedAt }.thenBy { it.id }
                                 )
                             }
-                    val periods =
-                        current
-                            .filter { it.type == CellType.WORK_SHIFT.name }
-                            .map {
-                                WorkPeriod(
-                                    it.id,
-                                    LocalDate.parse(it.date),
-                                    LocalTime.parse(requireNotNull(it.startTime)),
-                                    LocalTime.parse(requireNotNull(it.endTime)),
-                                    WorkSource.SCHEDULE,
-                                )
-                            } + extras.map { it.period() }
-                    periods to extras
+                    val scheduled =
+                        if (calendarAvailable)
+                            calendarWorkPeriods(
+                                current,
+                                app.calendar.events(current.map { it.calendarEventId }),
+                                ZoneId.systemDefault(),
+                            )
+                        else
+                            current
+                                .filter { it.type == CellType.WORK_SHIFT.name }
+                                .map {
+                                    WorkPeriod(
+                                        it.id,
+                                        LocalDate.parse(it.date),
+                                        LocalTime.parse(requireNotNull(it.startTime)),
+                                        LocalTime.parse(requireNotNull(it.endTime)),
+                                        WorkSource.SCHEDULE,
+                                    )
+                                }
+                    Triple(scheduled + extras.map { it.period() }, extras, calendarAvailable)
                 }
                 .catch { error ->
                     mutable.update {
@@ -130,9 +265,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
-                .collect { (periods, extras) ->
+                .collect { (periods, extras, calendarAvailable) ->
                     mutable.update {
-                        it.copy(hoursPeriods = periods, hoursExtras = extras, hoursLoaded = true)
+                        it.copy(
+                            hoursPeriods = periods,
+                            hoursExtras = extras,
+                            hoursLoaded = true,
+                            hoursCalendarAvailable = calendarAvailable,
+                        )
                     }
                 }
         }
@@ -162,6 +302,29 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         )
         onSaved()
     }
+
+    fun saveShiftHours(period: WorkPeriod, start: LocalTime, end: LocalTime, onSaved: () -> Unit) =
+        launchWork {
+            require(period.source == WorkSource.SCHEDULE)
+            require(period.endDateTime < period.startDateTime.plusDays(1)) {
+                "CALENDAR_EDIT_DURATION"
+            }
+            val state = mutable.value
+            app.sync.updateHours(
+                requireNotNull(state.profile).id,
+                period.id,
+                start,
+                end,
+                EventOptions(
+                    location = state.settings.location,
+                    description = state.settings.description,
+                    reminderMinutes = state.settings.reminderMinutes,
+                    color = state.settings.eventColor,
+                ),
+                ZoneId.systemDefault(),
+            )
+            onSaved()
+        }
 
     fun removeExtra(extra: ExtraWorkEntity, onRemoved: () -> Unit) = launchWork {
         val employee = requireNotNull(mutable.value.profile).id
@@ -195,6 +358,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     R.string.review_required
                 error.message == "INVALID_CROP" -> R.string.invalid_crop
                 error.message == "CALENDAR_UNAVAILABLE" -> R.string.no_calendar
+                error.message == "CALENDAR_NOT_WRITABLE" -> R.string.calendar_not_writable
+                error.message == "CALENDAR_EDIT_DURATION" -> R.string.calendar_long_event
                 error.message == "EXTRA_DUPLICATE" -> R.string.extra_duplicate
                 error.message == "CALENDAR_OWNERSHIP_CHANGED" ||
                     error.message == "MULTIPLE_CALENDAR_MATCHES" -> R.string.calendar_conflict

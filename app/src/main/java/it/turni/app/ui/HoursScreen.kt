@@ -1,5 +1,9 @@
 package it.turni.app.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,13 +12,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import it.turni.app.R
-import it.turni.app.data.ExtraWorkEntity
 import it.turni.core.*
 import java.time.LocalDate
 import java.time.LocalTime
@@ -31,9 +36,22 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
     var choosingWeek by rememberSaveable { mutableStateOf(false) }
     var adding by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingEditId by rememberSaveable { mutableStateOf<String?>(null) }
     var deletingId by rememberSaveable { mutableStateOf<String?>(null) }
-    val editing = state.hoursExtras.firstOrNull { it.id == editingId }
+    val editing = state.hoursPeriods.firstOrNull { it.id == editingId }
     val deleting = state.hoursExtras.firstOrNull { it.id == deletingId }
+    val context = LocalContext.current
+    val calendarPermissions =
+        listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
+    val permissions =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            result ->
+            if (calendarPermissions.all { result[it] == true }) {
+                editingId = pendingEditId
+                vm.refreshCalendar()
+            } else vm.reportError(context.getString(R.string.permission_denied))
+            pendingEditId = null
+        }
     LaunchedEffect(monthText, state.profile?.id) { vm.loadHours(month) }
     val weeks = WorkingHours.monthWeeks(month)
     val window = weeks.getOrNull(weekIndex) ?: HoursWindow(month.atDay(1), month.atEndOfMonth())
@@ -66,6 +84,15 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                     Button(onClick = onSettings) { Text(stringResource(R.string.setup_button)) }
                 }
             else {
+                if (!state.hoursCalendarAvailable && state.hoursLoaded)
+                    item {
+                        Text(stringResource(R.string.hours_calendar_cached))
+                        TextButton(
+                            onClick = { permissions.launch(calendarPermissions.toTypedArray()) }
+                        ) {
+                            Text(stringResource(R.string.hours_calendar_permission))
+                        }
+                    }
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
@@ -184,16 +211,42 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                                     stringResource(R.string.overnight),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
+                            period.endDate?.let { endDate ->
+                                if (endDate > period.date.plusDays(1))
+                                    Text(
+                                        stringResource(R.string.hours_ends_on, endDate.toString()),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                            }
                             Text(durationLabel(entry.minutes))
-                            if (extra != null)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    TextButton(onClick = { editingId = extra.id }) {
-                                        Text(stringResource(R.string.edit))
-                                    }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(
+                                    onClick = {
+                                        if (
+                                            period.source == WorkSource.EXTRA ||
+                                                calendarPermissions.all {
+                                                    ContextCompat.checkSelfPermission(
+                                                        context,
+                                                        it,
+                                                    ) == PackageManager.PERMISSION_GRANTED
+                                                }
+                                        )
+                                            editingId = period.id
+                                        else {
+                                            pendingEditId = period.id
+                                            permissions.launch(calendarPermissions.toTypedArray())
+                                        }
+                                    },
+                                    enabled = !state.busy,
+                                    modifier = Modifier.testTag("edit_${period.id}"),
+                                ) {
+                                    Text(stringResource(R.string.edit))
+                                }
+                                if (extra != null)
                                     TextButton(onClick = { deletingId = extra.id }) {
                                         Text(stringResource(R.string.delete))
                                     }
-                                }
+                            }
                         }
                     }
                 }
@@ -250,7 +303,7 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
             },
         )
     if (adding || editing != null)
-        ExtraDialog(
+        WorkHoursDialog(
             editing,
             month,
             state.busy,
@@ -259,12 +312,20 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                 editingId = null
             },
         ) { date, start, end ->
-            vm.saveExtra(date, start, end, editing) {
-                monthText = YearMonth.from(date).toString()
-                weekIndex = -1
-                adding = false
-                editingId = null
-            }
+            if (editing?.source == WorkSource.SCHEDULE)
+                vm.saveShiftHours(editing, start, end) { editingId = null }
+            else
+                vm.saveExtra(
+                    date,
+                    start,
+                    end,
+                    state.hoursExtras.firstOrNull { it.id == editingId },
+                ) {
+                    monthText = YearMonth.from(date).toString()
+                    weekIndex = -1
+                    adding = false
+                    editingId = null
+                }
         }
     deleting?.let { extra ->
         AlertDialog(
@@ -357,8 +418,8 @@ private fun MonthDialog(month: YearMonth, onDismiss: () -> Unit, onChoose: (Year
 }
 
 @Composable
-private fun ExtraDialog(
-    previous: ExtraWorkEntity?,
+private fun WorkHoursDialog(
+    previous: WorkPeriod?,
     month: YearMonth,
     busy: Boolean,
     onDismiss: () -> Unit,
@@ -367,18 +428,30 @@ private fun ExtraDialog(
     var date by
         rememberSaveable(previous?.id) {
             mutableStateOf(
-                previous?.date
+                previous?.date?.toString()
                     ?: (if (YearMonth.now() == month) LocalDate.now() else month.atDay(1))
                         .toString()
             )
         }
-    var start by rememberSaveable(previous?.id) { mutableStateOf(previous?.startTime.orEmpty()) }
-    var end by rememberSaveable(previous?.id) { mutableStateOf(previous?.endTime.orEmpty()) }
+    var start by
+        rememberSaveable(previous?.id) {
+            mutableStateOf(previous?.start?.format(DateTimeFormatter.ofPattern("HH:mm")).orEmpty())
+        }
+    var end by
+        rememberSaveable(previous?.id) {
+            mutableStateOf(previous?.end?.format(DateTimeFormatter.ofPattern("HH:mm")).orEmpty())
+        }
+    val scheduled = previous?.source == WorkSource.SCHEDULE
     var invalid by rememberSaveable { mutableStateOf(false) }
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!busy) onDismiss() },
         title = {
-            Text(stringResource(if (previous == null) R.string.add_extra else R.string.edit_extra))
+            Text(
+                stringResource(
+                    if (scheduled) R.string.edit_shift_hours
+                    else if (previous == null) R.string.add_extra else R.string.edit_extra
+                )
+            )
         },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -392,6 +465,7 @@ private fun ExtraDialog(
                         Modifier.fillMaxWidth().testTag("extra_date"),
                         label = { Text(stringResource(R.string.date)) },
                         singleLine = true,
+                        readOnly = scheduled,
                     )
                 }
                 item {
@@ -420,7 +494,9 @@ private fun ExtraDialog(
                 }
                 item {
                     Text(
-                        stringResource(R.string.extra_help),
+                        stringResource(
+                            if (scheduled) R.string.shift_hours_help else R.string.extra_help
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }

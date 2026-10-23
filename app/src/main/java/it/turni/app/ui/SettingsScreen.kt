@@ -163,6 +163,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onSaved: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            item { UpdateSettings(state.updater, vm) }
         }
         ActionFooter(
             stringResource(R.string.save),
