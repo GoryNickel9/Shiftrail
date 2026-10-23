@@ -22,7 +22,7 @@ Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i
 
 `19-01` produce un evento **Lavoro** dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e, se abilitata nelle impostazioni, produce un evento di intera giornata intitolato **Giorno di riposo**. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
 
-**Ore** mostra il totale di un mese o di una sua settimana, distinguendo i turni salvati dal lavoro extra. Ogni turno mostra inizio e fine modificabili: salvare un turno importato aggiorna anche l’evento nel calendario e ricalcola le ore. L’extra si inserisce con data, inizio e fine; può essere modificato o eliminato e resta locale a Shiftrail. I turni notturni sono suddivisi a mezzanotte quando attraversano il confine del periodo. Le ore importate derivano dal programma salvato, non da una rilevazione delle presenze. Vedi [conteggio ore](docs/WORKING_HOURS.md).
+**Ore** mostra il totale di un mese o di una sua settimana, distinguendo gli eventi associati dal lavoro extra. Le modifiche fatte direttamente nel Calendario aggiornano automaticamente gli orari e i totali, anche al ritorno nell’app. Ogni turno mostra inizio e fine modificabili: salvare da Shiftrail aggiorna anche l’evento nel calendario. L’extra si inserisce con data, inizio e fine; può essere modificato o eliminato e resta locale a Shiftrail. I turni notturni sono suddivisi a mezzanotte quando attraversano il confine del periodo. Le ore derivano dal calendario, non da una rilevazione delle presenze; senza il permesso di lettura l’app mostra il programma salvato con un avviso. Vedi [conteggio ore](docs/WORKING_HOURS.md).
 
 ## Build
 

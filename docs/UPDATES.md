@@ -18,7 +18,7 @@ Modificare `versionCode` e `versionName` in `app/build.gradle.kts`, aggiungere l
 ./scripts/publish-release.ps1
 ```
 
-Lo script esegue build, test JVM, lint e formattazione, prepara l’APK release, controlla il certificato, produce manifest/checksum e crea la GitHub Release sul commit pubblicato. `-SkipBuild` riutilizza gli artefatti già verificati nella sessione; non esegue i test strumentati, che richiedono un emulatore o un dispositivo. I test Android devono essere eseguiti prima di distribuire cambiamenti ai flussi del calendario o dell’installazione.
+Lo script esegue build, test JVM, lint e controllo della formattazione, prepara l’APK release, controlla il certificato, produce manifest/checksum e crea la GitHub Release sul commit pubblicato. `-SkipBuild` riutilizza gli artefatti già verificati nella sessione; non esegue i test strumentati, che richiedono un emulatore o un dispositivo. I test Android devono essere eseguiti prima di distribuire cambiamenti ai flussi del calendario o dell’installazione.
 
 Il build type release è non debuggabile ma mantiene il certificato delle versioni iniziali, ottenuto dal keystore Android locale, per consentire l’aggiornamento delle installazioni esistenti. La chiave privata non viene pubblicata. `signing-certificate.sha256` contiene solo l’impronta pubblica: lo script rifiuta un APK con una firma diversa. Conservare una copia sicura del keystore originale; una macchina nuova genera una chiave diversa e non può produrre un aggiornamento compatibile. Gli artefatti debug generati dalla CI sono destinati ai test e non vengono pubblicati automaticamente come release.
 
