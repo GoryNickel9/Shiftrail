@@ -133,11 +133,6 @@ interface TurniDao {
     suspend fun shifts(week: String): List<ShiftEntity>
 
     @Query(
-        "SELECT * FROM shifts WHERE employeeId = :employee AND date >= :fromDate ORDER BY date LIMIT 14"
-    )
-    fun upcoming(employee: String, fromDate: String): Flow<List<ShiftEntity>>
-
-    @Query(
         "SELECT * FROM shifts WHERE employeeId = :employee AND date BETWEEN :fromDate AND :untilDate AND calendarId = :calendar"
     )
     suspend fun previous(

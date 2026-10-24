@@ -8,21 +8,23 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 [Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
 
-Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i dati. Dalla versione 0.3.0 Shiftrail controlla automaticamente le nuove release una volta al giorno; il controllo manuale è in **Impostazioni → Aggiornamenti**. Download e installazione richiedono la tua scelta. Protocollo, firma e pubblicazione sono descritti in [aggiornamenti](docs/UPDATES.md).
+Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i dati. Dalla versione 0.4.0 Shiftrail controlla le nuove release a ogni ritorno nell’app: una versione successiva compatibile deve essere installata per continuare. La richiesta viene conservata anche dopo la chiusura. Il controllo manuale resta in **Impostazioni → Aggiornamenti**. Protocollo, firma e pubblicazione sono descritti in [aggiornamenti](docs/UPDATES.md).
 
 <img src="docs/images/shiftrail-home.png" alt="Home Shiftrail su Android 15" width="240"> <img src="docs/images/shiftrail-review-ready.png" alt="Revisione con letture pronte e pulsante fisso" width="240"> <img src="docs/images/shiftrail-review-large-font.png" alt="Revisione con caratteri al 160%" width="240">
 
 ## Utilizzo
 
-1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone. Scegli il preavviso (inizialmente 30 minuti), i colori di lavoro e riposo e se salvare le X.
+1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone. Scegli il calendario di destinazione, il preavviso (inizialmente 30 minuti), i colori di lavoro e riposo e se salvare le X.
 2. Scatta una foto o scegli un’immagine con il Photo Picker. Trascina i quattro angoli del crop mantenendo visibili nome, giorni e date.
 3. Controlla la riga scelta e le date. Se il nome è ambiguo, seleziona la riga; se l’anno manca, conferma la data del lunedì.
 4. Correggi, elimina o aggiungi celle. Usa **Mostra origine** per confrontare il contenuto. Sotto 90/100 occorre una verifica esplicita; da 90/100 incluso non compare una conferma individuale. Le celle non riconosciute richiedono correzione o eliminazione.
-5. Scegli il calendario di destinazione: ogni voce mostra nome, account e stato. Sono inclusi calendari nascosti e disattivati; per usarli conferma **Attiva e usa**. Le destinazioni di sola lettura non sono selezionabili. Verifica il piano di sincronizzazione. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
+5. Verifica il piano di sincronizzazione: viene usato il calendario scelto nelle Impostazioni o nell’ultima importazione. La scelta ricompare solo se manca una destinazione utilizzabile. Ogni voce mostra nome, account e stato; per un calendario nascosto o disattivato conferma **Attiva e usa**. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
 
 `19-01` produce un evento **Lavoro** dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e, se abilitata nelle impostazioni, produce un evento di intera giornata intitolato **Giorno di riposo**. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
 
 **Ore** mostra il totale di un mese o di una sua settimana, distinguendo gli eventi associati dal lavoro extra. Le modifiche fatte direttamente nel Calendario aggiornano automaticamente gli orari e i totali, anche al ritorno nell’app. Ogni turno mostra inizio e fine modificabili: salvare da Shiftrail aggiorna anche l’evento nel calendario. L’extra si inserisce con data, inizio e fine; può essere modificato o eliminato e resta locale a Shiftrail. I turni notturni sono suddivisi a mezzanotte quando attraversano il confine del periodo. Le ore derivano dal calendario, non da una rilevazione delle presenze; senza il permesso di lettura l’app mostra il programma salvato con un avviso. Vedi [conteggio ore](docs/WORKING_HOURS.md).
+
+Home e Ore usano la stessa lettura degli eventi collegati al calendario. Home elenca i turni futuri senza il precedente taglio a 14 righe; Ore li filtra per mese o settimana. Le importazioni ripetute dello stesso giorno in calendari diversi vengono risolte prima di costruire entrambe le viste.
 
 ## Build
 

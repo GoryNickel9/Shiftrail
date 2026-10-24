@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,12 +28,38 @@ fun TurniApp(vm: AppViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val context = LocalContext.current
+    var calendarForSettings by rememberSaveable { mutableStateOf(false) }
+    fun continueWithCalendar(forSettings: Boolean) {
+        if (forSettings) vm.loadCalendars { nav.navigate("calendar-settings") }
+        else
+            vm.continueImport(
+                onPrepared = { nav.navigate("sync") },
+                onChooseCalendar = { nav.navigate("calendars") },
+            )
+    }
     val permissions =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             result ->
-            if (result.values.all { it }) vm.loadCalendars { nav.navigate("calendars") }
+            if (
+                listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR).all {
+                    result[it] == true
+                }
+            )
+                continueWithCalendar(calendarForSettings)
             else vm.reportError(context.getString(R.string.permission_denied))
         }
+    fun requestCalendar(forSettings: Boolean) {
+        calendarForSettings = forSettings
+        val requested =
+            arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
+        if (
+            requested.all {
+                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+            }
+        )
+            continueWithCalendar(forSettings)
+        else permissions.launch(requested)
+    }
     val gallery =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             uri?.let { vm.loadImage(it) { nav.navigate("crop") } }
@@ -45,13 +72,13 @@ fun TurniApp(vm: AppViewModel) {
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: "home"
     ShiftrailTheme {
-        if (
-            state.loaded &&
-                !state.busy &&
-                route in listOf("home", "settings") &&
-                state.updater.showDialog
-        )
-            UpdateDialog(state.updater, vm)
+        if (!state.busy && state.updater.release != null) {
+            RequiredUpdateScreen(state.updater, vm::downloadUpdate, vm::installUpdate) {
+                vm.checkUpdates()
+            }
+            BackHandler {}
+            return@ShiftrailTheme
+        }
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -144,7 +171,11 @@ fun TurniApp(vm: AppViewModel) {
                                 settings = { nav.navigate("settings") },
                             )
                         }
-                        composable("settings") { SettingsScreen(state, vm) { nav.popBackStack() } }
+                        composable("settings") {
+                            SettingsScreen(state, vm, onCalendar = { requestCalendar(true) }) {
+                                nav.popBackStack()
+                            }
+                        }
                         composable("hours") {
                             HoursScreen(state, vm, onSettings = { nav.navigate("settings") })
                         }
@@ -173,25 +204,7 @@ fun TurniApp(vm: AppViewModel) {
                             ReviewScreen(
                                 state,
                                 vm,
-                                onCalendar = {
-                                    val allowed =
-                                        listOf(
-                                                Manifest.permission.READ_CALENDAR,
-                                                Manifest.permission.WRITE_CALENDAR,
-                                            )
-                                            .all {
-                                                ContextCompat.checkSelfPermission(context, it) ==
-                                                    PackageManager.PERMISSION_GRANTED
-                                            }
-                                    if (allowed) vm.loadCalendars { nav.navigate("calendars") }
-                                    else
-                                        permissions.launch(
-                                            arrayOf(
-                                                Manifest.permission.READ_CALENDAR,
-                                                Manifest.permission.WRITE_CALENDAR,
-                                            )
-                                        )
-                                },
+                                onCalendar = { requestCalendar(false) },
                             )
                         }
                         composable("calendars") {
@@ -201,6 +214,16 @@ fun TurniApp(vm: AppViewModel) {
                                     vm.prepare(id, enable) { nav.navigate("sync") }
                                 },
                                 onRetry = { vm.loadCalendars {} },
+                            )
+                        }
+                        composable("calendar-settings") {
+                            CalendarScreen(
+                                state,
+                                onChoose = { id, enable ->
+                                    vm.saveCalendar(id, enable) { nav.popBackStack() }
+                                },
+                                onRetry = { vm.loadCalendars {} },
+                                importing = false,
                             )
                         }
                         composable("sync") {

@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import it.turni.app.BuildConfig
 import it.turni.core.ReleaseUpdate
 import java.io.File
 import java.io.FileNotFoundException
@@ -25,7 +26,6 @@ data class UpdateState(
     val checking: Boolean = false,
     val downloading: Boolean = false,
     val ready: Boolean = false,
-    val showDialog: Boolean = false,
     val message: String? = null,
 )
 
@@ -38,14 +38,38 @@ class UpdateRepository(private val context: Context) {
     private val apk
         get() = File(directory, "Shiftrail.apk")
 
-    fun automaticCheckDue(now: Long = System.currentTimeMillis()): Boolean {
-        val checked = preferences.getLong("last_check", 0)
-        return now < checked || now - checked >= 24 * 60 * 60 * 1000L
+    fun requiredUpdate(
+        installedVersion: Long = BuildConfig.VERSION_CODE.toLong(),
+        sdk: Int = Build.VERSION.SDK_INT,
+    ): ReleaseUpdate? {
+        val text = preferences.getString("required_release", null) ?: return null
+        val release =
+            try {
+                parseManifest(text)
+            } catch (_: Exception) {
+                null
+            }
+        if (release?.isCompatibleUpdate(installedVersion, sdk) == true) return release
+        preferences.edit().remove("required_release").apply()
+        return null
+    }
+
+    fun rememberUpdate(release: ReleaseUpdate) {
+        if (!release.isCompatibleUpdate(BuildConfig.VERSION_CODE.toLong(), Build.VERSION.SDK_INT))
+            return
+        if ((requiredUpdate()?.versionCode ?: 0) > release.versionCode) return
+        val manifest =
+            JSONObject()
+                .put("schemaVersion", 1)
+                .put("versionCode", release.versionCode)
+                .put("versionName", release.versionName)
+                .put("sha256", release.sha256)
+                .put("minSdk", release.minSdk)
+        preferences.edit().putString("required_release", manifest.toString()).apply()
     }
 
     suspend fun check(): ReleaseUpdate? =
         withContext(Dispatchers.IO) {
-            preferences.edit().putLong("last_check", System.currentTimeMillis()).apply()
             val connection = connect("$REPOSITORY/releases/latest/download/update.json")
             try {
                 if (connection.responseCode == 404) return@withContext null
@@ -60,7 +84,7 @@ class UpdateRepository(private val context: Context) {
                     }
                 }
                 require(count < buffer.size) { "UPDATE_MANIFEST" }
-                parseManifest(String(buffer, 0, count, Charsets.UTF_8))
+                parseManifest(String(buffer, 0, count, Charsets.UTF_8)).also { rememberUpdate(it) }
             } finally {
                 connection.disconnect()
             }

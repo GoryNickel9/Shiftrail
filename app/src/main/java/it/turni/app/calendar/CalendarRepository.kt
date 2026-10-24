@@ -36,6 +36,11 @@ data class ProviderEvent(
     val allDay: Boolean,
 )
 
+fun preferredCalendar(calendars: List<WritableCalendar>, id: Long?): WritableCalendar? =
+    calendars.singleOrNull {
+        it.id == id && it.writable && it.visible && it.syncEnabled
+    }
+
 data class CalendarMutation(
     val date: java.time.LocalDate,
     val event: CalendarEvent?,

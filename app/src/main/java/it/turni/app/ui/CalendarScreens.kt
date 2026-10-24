@@ -12,13 +12,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import it.turni.app.R
 import it.turni.app.calendar.WritableCalendar
+import it.turni.app.calendar.preferredCalendar
 import it.turni.core.ChangeKind
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun CalendarScreen(state: AppState, onChoose: (Long, Boolean) -> Unit, onRetry: () -> Unit) {
+fun CalendarScreen(
+    state: AppState,
+    onChoose: (Long, Boolean) -> Unit,
+    onRetry: () -> Unit,
+    importing: Boolean = true,
+) {
     var pending by remember { mutableStateOf<WritableCalendar?>(null) }
     fun choose(calendar: WritableCalendar) {
         if (!calendar.visible || !calendar.syncEnabled) pending = calendar
@@ -55,12 +61,17 @@ fun CalendarScreen(state: AppState, onChoose: (Long, Boolean) -> Unit, onRetry: 
     }
     LazyColumn(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            ImportProgress(3)
+            if (importing) ImportProgress(3)
             Text(
                 stringResource(R.string.choose_calendar),
                 style = MaterialTheme.typography.headlineMedium,
             )
             Text(stringResource(R.string.calendar_help))
+            if (
+                state.settings.calendarId != null &&
+                    preferredCalendar(state.calendars, state.settings.calendarId) == null
+            )
+                Text(stringResource(R.string.calendar_preferred_unavailable))
             OutlinedButton(onClick = onRetry, enabled = !state.busy) {
                 Text(stringResource(R.string.calendar_refresh))
             }

@@ -59,9 +59,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val dao = app.database.dao()
     private val images = ImageProcessor(app)
     private val extractor: ScheduleExtractor = LocalScheduleExtractor(images)
-    private val mutable = MutableStateFlow(AppState())
+    private val mutable =
+        MutableStateFlow(AppState(updater = UpdateState(release = app.updater.requiredUpdate())))
     val state = mutable.asStateFlow()
-    private var upcomingJob: Job? = null
     private var hoursJob: Job? = null
     private var hoursMonth = YearMonth.now()
     private val calendarRefresh = MutableStateFlow(0)
@@ -74,23 +74,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun checkUpdates(automatic: Boolean = false) {
         if (updateJob?.isActive == true || mutable.value.updater.downloading) return
-        if (automatic && !app.updater.automaticCheckDue()) return
         updateJob = viewModelScope.launch {
             mutable.update { it.copy(updater = it.updater.copy(checking = true, message = null)) }
             try {
                 val latest = app.updater.check()
-                val release = latest?.takeIf {
-                    it.isCompatibleUpdate(
-                        BuildConfig.VERSION_CODE.toLong(),
-                        Build.VERSION.SDK_INT,
-                    )
-                }
+                val release = app.updater.requiredUpdate()
                 mutable.update {
                     it.copy(
                         updater =
-                            UpdateState(
+                            it.updater.copy(
                                 release = release,
-                                showDialog = release != null,
+                                checking = false,
+                                ready = it.updater.ready && it.updater.release == release,
                                 message =
                                     if (release == null && !automatic)
                                         app.getString(
@@ -115,21 +110,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             it.updater.copy(
                                 checking = false,
                                 message =
-                                    if (automatic) null
+                                    if (automatic && it.updater.release == null) null
                                     else app.getString(R.string.update_check_failed),
                             )
                     )
                 }
             }
         }
-    }
-
-    fun dismissUpdate() {
-        mutable.update { it.copy(updater = it.updater.copy(showDialog = false)) }
-    }
-
-    fun showUpdate() {
-        mutable.update { it.copy(updater = it.updater.copy(showDialog = true)) }
     }
 
     fun downloadUpdate() {
@@ -167,7 +154,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             mutable.update {
                 it.copy(
                     updater =
-                        it.updater.copy(message = app.getString(R.string.update_install_failed))
+                        it.updater.copy(
+                            ready = false,
+                            message = app.getString(R.string.update_install_failed),
+                        )
                 )
             }
         }
@@ -183,6 +173,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     settings =
                         dao.settings()
                             ?: SettingsEntity(title = app.getString(R.string.default_event_title)),
+                    calendars =
+                        if (hasCalendarPermission()) app.calendar.calendars() else emptyList(),
                 )
             }
             profile?.let { watch(it.id) }
@@ -190,14 +182,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun watch(employee: String) {
-        upcomingJob?.cancel()
-        upcomingJob = viewModelScope.launch {
-            dao.upcoming(employee, LocalDate.now().toString()).collect { value ->
-                mutable.update { it.copy(upcoming = value) }
-            }
-        }
         watchHours(employee)
     }
+
+    private fun hasCalendarPermission() =
+        ContextCompat.checkSelfPermission(app, Manifest.permission.READ_CALENDAR) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private data class ScheduleSnapshot(
+        val upcoming: List<ShiftEntity>,
+        val periods: List<WorkPeriod>,
+        val extras: List<ExtraWorkEntity>,
+        val calendarAvailable: Boolean,
+    )
 
     fun loadHours(month: YearMonth) {
         if (month == hoursMonth && hoursJob?.isActive == true) return
@@ -238,26 +235,36 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                                     compareBy<ShiftEntity> { it.updatedAt }.thenBy { it.id }
                                 )
                             }
-                    val scheduled =
+                    val schedule =
                         if (calendarAvailable)
-                            calendarWorkPeriods(
+                            calendarSchedule(
                                 current,
                                 app.calendar.events(current.map { it.calendarEventId }),
                                 ZoneId.systemDefault(),
                             )
                         else
-                            current
-                                .filter { it.type == CellType.WORK_SHIFT.name }
-                                .map {
-                                    WorkPeriod(
-                                        it.id,
-                                        LocalDate.parse(it.date),
-                                        LocalTime.parse(requireNotNull(it.startTime)),
-                                        LocalTime.parse(requireNotNull(it.endTime)),
-                                        WorkSource.SCHEDULE,
-                                    )
-                                }
-                    Triple(scheduled + extras.map { it.period() }, extras, calendarAvailable)
+                            CalendarSchedule(
+                                current,
+                                current
+                                    .filter { it.type == CellType.WORK_SHIFT.name }
+                                    .map {
+                                        WorkPeriod(
+                                            it.id,
+                                            LocalDate.parse(it.date),
+                                            LocalTime.parse(requireNotNull(it.startTime)),
+                                            LocalTime.parse(requireNotNull(it.endTime)),
+                                            WorkSource.SCHEDULE,
+                                        )
+                                    },
+                            )
+                    ScheduleSnapshot(
+                        schedule.shifts
+                            .filter { LocalDate.parse(it.date) >= LocalDate.now() }
+                            .sortedWith(compareBy({ it.date }, { it.startTime.orEmpty() })),
+                        schedule.periods + extras.map { it.period() },
+                        extras,
+                        calendarAvailable,
+                    )
                 }
                 .catch { error ->
                     mutable.update {
@@ -267,10 +274,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
-                .collect { (periods, extras, calendarAvailable) ->
+                .collect { (upcoming, periods, extras, calendarAvailable) ->
                     mutable.update {
                         it.copy(
                             hoursPeriods = periods,
+                            upcoming = upcoming,
                             hoursExtras = extras,
                             hoursLoaded = true,
                             hoursCalendarAvailable = calendarAvailable,
@@ -552,7 +560,33 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         onLoaded()
     }
 
+    fun saveCalendar(calendarId: Long, enable: Boolean, onSaved: () -> Unit) = launchWork {
+        if (enable) app.calendar.enableForImport(calendarId)
+        val calendars = app.calendar.calendars()
+        require(preferredCalendar(calendars, calendarId) != null) { "CALENDAR_UNAVAILABLE" }
+        val settings = mutable.value.settings.copy(calendarId = calendarId)
+        dao.saveSettings(settings)
+        mutable.update { it.copy(settings = settings, calendars = calendars) }
+        onSaved()
+    }
+
+    fun continueImport(onPrepared: () -> Unit, onChooseCalendar: () -> Unit) = launchWork {
+        val calendars = app.calendar.calendars()
+        mutable.update { it.copy(calendars = calendars) }
+        val preferred = preferredCalendar(calendars, mutable.value.settings.calendarId)
+        if (preferred == null) onChooseCalendar()
+        else {
+            preparePlan(preferred.id, false)
+            onPrepared()
+        }
+    }
+
     fun prepare(calendarId: Long, enable: Boolean = false, onPrepared: () -> Unit) = launchWork {
+        preparePlan(calendarId, enable)
+        onPrepared()
+    }
+
+    private suspend fun preparePlan(calendarId: Long, enable: Boolean) {
         val state = mutable.value
         val profile = requireNotNull(state.profile)
         val result = requireNotNull(state.extraction).table
@@ -609,7 +643,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         .toSet(),
             )
         }
-        onPrepared()
     }
 
     fun toggleChange(date: LocalDate) {

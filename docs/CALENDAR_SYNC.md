@@ -1,5 +1,7 @@
 # Sincronizzazione calendario
 
+Dalla 0.4.0 il calendario può essere scelto in **Impostazioni → Calendario destinazione**. La scelta viene salvata subito e riutilizzata nelle nuove importazioni. Dopo la revisione si passa direttamente all’anteprima se la destinazione esiste, è scrivibile, visibile e attiva; altrimenti torna la scelta con un avviso. Non viene selezionato automaticamente un altro account. Anche la prima scelta durante un’importazione diventa la preferenza successiva. Cambiare destinazione non sposta i turni già collegati ad altri calendari e non richiede una migrazione Room.
+
 La conferma di un’importazione ricontrolla la visibilità prima del batch: se la destinazione è stata nascosta dopo l’anteprima, blocca la scrittura e non salva turni locali. Le modifiche da Ore ai turni già collegati a un calendario nascosto restano consentite.
 
 Per le nuove importazioni, dalla versione 0.3.3 `CalendarRepository` elenca tutti i calendari esposti dal provider Android senza filtri sul nome, sulla visibilità o sulla sincronizzazione. Mostra nome, account e stato; se il nome visibile è vuoto usa quello interno. Le destinazioni di sola lettura sono elencate ma non selezionabili. I calendari di account precedono quelli locali (`ACCOUNT_TYPE_LOCAL`), indicati come disponibili solo sul dispositivo. L’utente sceglie la destinazione, riportata anche nella conferma e nel risultato.

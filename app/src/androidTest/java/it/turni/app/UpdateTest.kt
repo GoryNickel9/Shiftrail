@@ -9,6 +9,29 @@ import org.junit.Test
 
 class UpdateTest {
     @Test
+    fun requiredUpdateSurvivesRestartAndClearsAfterInstallation() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = context.getSharedPreferences("updater", 0)
+        val previous = preferences.getString("required_release", null)
+        preferences.edit().remove("required_release").commit()
+        try {
+            val update = ReleaseUpdate(BuildConfig.VERSION_CODE + 2, "99.0.0", "a".repeat(64), 26)
+            UpdateRepository(context).rememberUpdate(update)
+            assertEquals(update, UpdateRepository(context).requiredUpdate())
+            UpdateRepository(context)
+                .rememberUpdate(update.copy(versionCode = BuildConfig.VERSION_CODE + 1))
+            assertEquals(update, UpdateRepository(context).requiredUpdate())
+            assertNull(UpdateRepository(context).requiredUpdate(update.versionCode.toLong()))
+            assertNull(UpdateRepository(context).requiredUpdate())
+            UpdateRepository(context)
+                .rememberUpdate(update.copy(minSdk = android.os.Build.VERSION.SDK_INT + 1))
+            assertNull(UpdateRepository(context).requiredUpdate())
+        } finally {
+            preferences.edit().putString("required_release", previous).commit()
+        }
+    }
+
+    @Test
     fun manifestRequiresKnownSchemaAndValidMetadata() {
         val valid =
             """{"schemaVersion":1,"versionCode":10,"versionName":"0.3.0","sha256":"${"a".repeat(64)}","minSdk":26}"""

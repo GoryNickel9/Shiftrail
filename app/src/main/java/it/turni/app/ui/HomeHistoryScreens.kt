@@ -156,7 +156,7 @@ fun HomeScreen(
 
 @Composable
 private fun ShiftSummary(shift: ShiftEntity) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth().testTag("home_shift_${shift.id}")) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 java.time.LocalDate.parse(shift.date)
@@ -166,7 +166,8 @@ private fun ShiftSummary(shift: ShiftEntity) {
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                if (shift.type == "WORK_SHIFT") "${shift.startTime} → ${shift.endTime}"
+                if (shift.type == "WORK_SHIFT")
+                    "${java.time.LocalTime.parse(shift.startTime).format(DateTimeFormatter.ofPattern("HH:mm"))} → ${java.time.LocalTime.parse(shift.endTime).format(DateTimeFormatter.ofPattern("HH:mm"))}"
                 else shift.code.orEmpty()
             )
             if (shift.endNextDay) Text(stringResource(R.string.overnight))

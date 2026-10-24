@@ -9,6 +9,27 @@ import org.junit.Test
 
 class CalendarHoursTest {
     @Test
+    fun homeAndHoursShareTheCurrentDatesAndTimesAndOmitRemovedEvents() {
+        val moved =
+            event.copy(start = millis(date.plusDays(1), 12), end = millis(date.plusDays(1), 15))
+        val snapshot = calendarSchedule(listOf(shift), mapOf(1L to moved), ZoneOffset.UTC)
+        assertEquals(snapshot.periods.single().date.toString(), snapshot.shifts.single().date)
+        assertEquals(snapshot.periods.single().start.toString(), snapshot.shifts.single().startTime)
+        assertEquals(snapshot.periods.single().end.toString(), snapshot.shifts.single().endTime)
+        assertFalse(snapshot.shifts.single().endNextDay)
+        assertTrue(calendarSchedule(listOf(shift), emptyMap(), ZoneOffset.UTC).shifts.isEmpty())
+        val rest =
+            calendarSchedule(
+                listOf(shift),
+                mapOf(1L to moved.copy(allDay = true)),
+                ZoneId.of("Pacific/Honolulu"),
+            )
+        assertEquals(date.plusDays(1).toString(), rest.shifts.single().date)
+        assertEquals("X", rest.shifts.single().code)
+        assertTrue(rest.periods.isEmpty())
+    }
+
+    @Test
     fun calendarSecondsAreKeptUntilTheDurationIsConvertedToWholeMinutes() {
         val seconds = event.copy(start = millis(date, 19) + 45000, end = millis(date, 20) + 15000)
         val period =

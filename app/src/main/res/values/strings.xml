@@ -174,7 +174,7 @@
     <string name="hours_boundary_note">I turni notturni sono divisi alla mezzanotte: ogni mese e settimana conta solo le ore del proprio periodo.</string>
     <string name="updates">Aggiornamenti</string>
     <string name="update_version">Versione installata: %1$s</string>
-    <string name="update_auto_note">Controllo automatico delle nuove versioni all’apertura, al massimo una volta al giorno. Il download parte solo quando lo scegli.</string>
+    <string name="update_auto_note">Controllo automatico a ogni ritorno nell’app. Quando viene rilevata una nuova versione compatibile, devi installarla per continuare.</string>
     <string name="update_check">Controlla aggiornamenti</string>
     <string name="update_checking">Controllo in corso…</string>
     <string name="update_available">Disponibile Shiftrail %1$s</string>
@@ -186,7 +186,11 @@
     <string name="update_install_note">APK verificato. Android chiederà conferma per installarlo. Se devi autorizzare Shiftrail a installare app, torna qui e premi di nuovo Installa.</string>
     <string name="update_download">Scarica aggiornamento</string>
     <string name="update_install">Installa</string>
-    <string name="update_later">Più tardi</string>
+    <string name="update_required">Aggiornamento obbligatorio</string>
+    <string name="update_required_note">Per continuare a usare Shiftrail installa l’aggiornamento. I turni e le impostazioni vengono conservati. La richiesta resta attiva anche dopo aver chiuso l’app.</string>
+    <string name="calendar_not_selected">Nessun calendario scelto</string>
+    <string name="calendar_preferred_unavailable">Il calendario preferito non è disponibile o è disattivato. Scegli una destinazione utilizzabile.</string>
+    <string name="calendar_preferred_note">Le nuove importazioni useranno questo calendario senza chiedertelo ogni volta. I turni già salvati restano nel calendario originale.</string>
     <string name="update_download_failed">Download non riuscito o APK non valido. Nessun aggiornamento è stato installato. Riprova.</string>
     <string name="update_install_failed">Non riesco ad aprire l’installazione. Controlla l’autorizzazione di Shiftrail a installare app e riprova.</string>
 </resources>

@@ -50,7 +50,7 @@ private fun colorLabel(color: Int?): String =
     }
 
 @Composable
-fun SettingsScreen(state: AppState, vm: AppViewModel, onSaved: () -> Unit) {
+fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onSaved: () -> Unit) {
     val focus = LocalFocusManager.current
     var name by rememberSaveable { mutableStateOf(state.profile?.name.orEmpty()) }
     var reminder by rememberSaveable { mutableStateOf(state.settings.reminderMinutes) }
@@ -95,6 +95,30 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onSaved: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            item {
+                val calendar = state.calendars.firstOrNull { it.id == state.settings.calendarId }
+                SettingChoice(
+                    stringResource(R.string.choose_calendar),
+                    calendar?.let { "${it.name}\n${it.account}" }
+                        ?: stringResource(
+                            if (state.settings.calendarId == null) R.string.calendar_not_selected
+                            else R.string.calendar_preferred_unavailable
+                        ),
+                    "destination_calendar",
+                ) {
+                    focus.clearFocus()
+                    onCalendar()
+                }
+                Text(
+                    stringResource(R.string.calendar_preferred_note),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (calendar?.localOnly == true)
+                    Text(
+                        stringResource(R.string.calendar_local_only),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
             }
             item {
                 SettingChoice(

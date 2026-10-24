@@ -1,6 +1,8 @@
 package it.turni.app.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -28,49 +30,52 @@ fun UpdateSettings(state: UpdateState, vm: AppViewModel) {
                 )
             )
         }
-        state.release?.let {
-            Button(onClick = vm::showUpdate) {
-                Text(stringResource(R.string.update_available, it.versionName))
-            }
-        }
         state.message?.let { Text(it, Modifier.testTag("update_message")) }
     }
 }
 
 @Composable
-fun UpdateDialog(state: UpdateState, vm: AppViewModel) {
+fun RequiredUpdateScreen(
+    state: UpdateState,
+    onDownload: () -> Unit,
+    onInstall: () -> Unit,
+    onRetry: () -> Unit,
+) {
     val release = state.release ?: return
-    AlertDialog(
-        onDismissRequest = { if (!state.downloading) vm.dismissUpdate() },
-        title = { Text(stringResource(R.string.update_available, release.versionName)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    stringResource(
-                        if (state.ready) R.string.update_install_note
-                        else R.string.update_download_note
-                    )
+    Column(
+        Modifier.fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .testTag("required_update")
+    ) {
+        Column(
+            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                stringResource(R.string.update_required),
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            Text(
+                stringResource(R.string.update_available, release.versionName),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(stringResource(R.string.update_required_note))
+            Text(
+                stringResource(
+                    if (state.ready) R.string.update_install_note else R.string.update_download_note
                 )
-                if (state.downloading) CircularProgressIndicator()
-                state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { if (state.ready) vm.installUpdate() else vm.downloadUpdate() },
-                enabled = !state.downloading,
-            ) {
-                Text(
-                    stringResource(
-                        if (state.ready) R.string.update_install else R.string.update_download
-                    )
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = vm::dismissUpdate, enabled = !state.downloading) {
-                Text(stringResource(R.string.update_later))
-            }
-        },
-    )
+            )
+            if (state.downloading || state.checking) CircularProgressIndicator()
+            state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (state.message != null)
+                OutlinedButton(onClick = onRetry, enabled = !state.downloading && !state.checking) {
+                    Text(stringResource(R.string.update_check))
+                }
+        }
+        ActionFooter(
+            stringResource(if (state.ready) R.string.update_install else R.string.update_download),
+            enabled = !state.downloading && !state.checking,
+            action = if (state.ready) onInstall else onDownload,
+        )
+    }
 }
