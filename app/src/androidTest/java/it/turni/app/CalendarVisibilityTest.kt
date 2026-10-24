@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.provider.CalendarContract
 import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
+import it.turni.app.calendar.CalendarMutation
 import it.turni.app.calendar.CalendarRepository
 import it.turni.app.calendar.SyncRepository
 import it.turni.app.data.TurniDatabase
@@ -18,6 +19,93 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CalendarVisibilityTest {
+    @Test
+    fun anExistingEventCanOpenWhileHiddenThenReappearsWithoutReimporting() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        CalendarFixture("hidden-existing").use { fixture ->
+            val provider = CalendarRepository(context.contentResolver)
+            val date = LocalDate.of(2026, 11, 9)
+            val event =
+                requireNotNull(
+                    EventFactory.create(
+                        ShiftParser.parse("09-17", date),
+                        emptyList(),
+                        EventOptions(),
+                        ZoneId.of("Europe/Rome"),
+                    )
+                )
+            val id =
+                requireNotNull(
+                    provider
+                        .apply(
+                            fixture.id,
+                            listOf(CalendarMutation(date, event, null, "hidden-existing-marker")),
+                        )[date]
+                )
+            context.contentResolver.update(
+                ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, fixture.id),
+                ContentValues().apply { put(CalendarContract.Calendars.VISIBLE, 0) },
+                null,
+                null,
+            )
+            assertEquals(id, provider.event(id)!!.id)
+            assertFalse(provider.calendars().single { it.id == fixture.id }.visible)
+            try {
+                provider.verifyInstances(fixture.id, mapOf(id to event))
+                fail("A hidden event must be absent from the visible agenda")
+            } catch (error: IllegalStateException) {
+                assertEquals("CALENDAR_WRITE_FAILED", error.message)
+            }
+            provider.enableForImport(fixture.id)
+            provider.verifyInstances(fixture.id, mapOf(id to event))
+            assertEquals(id, provider.event(id)!!.id)
+        }
+    }
+
+    @Test
+    fun activationRejectsReadOnlyCalendarsWithoutChangingVisibility() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        CalendarFixture("read-only-enable").use { fixture ->
+            val uri =
+                ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, fixture.id)
+                    .buildUpon()
+                    .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
+                    .appendQueryParameter(
+                        CalendarContract.Calendars.ACCOUNT_NAME,
+                        "read-only-enable",
+                    )
+                    .appendQueryParameter(
+                        CalendarContract.Calendars.ACCOUNT_TYPE,
+                        CalendarContract.ACCOUNT_TYPE_LOCAL,
+                    )
+                    .build()
+            context.contentResolver.update(
+                uri,
+                ContentValues().apply {
+                    put(
+                        CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+                        CalendarContract.Calendars.CAL_ACCESS_READ,
+                    )
+                    put(CalendarContract.Calendars.VISIBLE, 0)
+                    put(CalendarContract.Calendars.SYNC_EVENTS, 0)
+                },
+                null,
+                null,
+            )
+            val provider = CalendarRepository(context.contentResolver)
+            try {
+                provider.enableForImport(fixture.id)
+                fail("Read-only calendars cannot be enabled for an import")
+            } catch (error: IllegalArgumentException) {
+                assertEquals("CALENDAR_NOT_WRITABLE", error.message)
+            }
+            val calendar = provider.calendars().single { it.id == fixture.id }
+            assertFalse(calendar.writable)
+            assertFalse(calendar.visible)
+            assertFalse(calendar.syncEnabled)
+        }
+    }
+
     @Test
     fun disabledCalendarCannotSaveAWeekAndEnabledCalendarHasSevenVisibleInstances() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -50,7 +138,7 @@ class CalendarVisibilityTest {
                     )
                 }
                 enabled(0)
-                assertFalse(provider.calendars().any { it.id == fixture.id })
+                assertFalse(provider.calendars().single { it.id == fixture.id }.syncEnabled)
                 try {
                     sync.commit(plan, cells.map { it.date }.toSet())
                     fail("A disabled destination must fail before saving local shifts")
@@ -73,7 +161,45 @@ class CalendarVisibilityTest {
                         it.turni.core.eventMarker("employee", monday, fixture.id),
                     )
                 )
+                resolver.update(
+                    calendarUri,
+                    ContentValues().apply { put(CalendarContract.Calendars.VISIBLE, 0) },
+                    null,
+                    null,
+                )
+                assertFalse(provider.calendars().single { it.id == fixture.id }.visible)
                 enabled(1)
+                try {
+                    sync.commit(plan, cells.map { it.date }.toSet())
+                    fail("A calendar hidden after the preview must fail before writing events")
+                } catch (error: IllegalArgumentException) {
+                    assertEquals("CALENDAR_SYNC_DISABLED", error.message)
+                }
+                assertNull(
+                    provider.findMarker(
+                        fixture.id,
+                        it.turni.core.eventMarker("employee", monday, fixture.id),
+                    )
+                )
+                CalendarFixture("keep-disabled").use { other ->
+                    val otherUri =
+                        ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, other.id)
+                    resolver.update(
+                        otherUri,
+                        ContentValues().apply {
+                            put(CalendarContract.Calendars.VISIBLE, 0)
+                            put(CalendarContract.Calendars.SYNC_EVENTS, 0)
+                        },
+                        null,
+                        null,
+                    )
+                    provider.enableForImport(fixture.id)
+                    val calendars = provider.calendars()
+                    assertTrue(calendars.single { it.id == fixture.id }.visible)
+                    assertTrue(calendars.single { it.id == fixture.id }.syncEnabled)
+                    assertFalse(calendars.single { it.id == other.id }.visible)
+                    assertFalse(calendars.single { it.id == other.id }.syncEnabled)
+                }
                 assertTrue(provider.calendars().any { it.id == fixture.id })
                 assertTrue(provider.calendars().single { it.id == fixture.id }.localOnly)
                 assertEquals(7, sync.commit(plan, cells.map { it.date }.toSet()))

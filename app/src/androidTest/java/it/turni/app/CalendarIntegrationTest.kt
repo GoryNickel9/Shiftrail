@@ -110,7 +110,7 @@ class CalendarIntegrationTest {
             assertEquals("Turni test", calendars.single { it.id == id }.name)
             assertEquals("turni-test", calendars.single { it.id == id }.account)
             assertEquals("Other calendar", calendars.single { it.id == otherId }.name)
-            assertFalse(calendars.any { it.id == readOnlyId })
+            assertFalse(calendars.single { it.id == readOnlyId }.writable)
             resolver.update(
                 calendarUri,
                 ContentValues().apply {
@@ -344,7 +344,7 @@ class CalendarIntegrationTest {
                     put(CalendarContract.Calendars.VISIBLE, 0)
                 }
             )
-            assertFalse(provider.calendars().any { it.id == id })
+            assertFalse(provider.calendars().single { it.id == id }.visible)
             sync.updateHours(
                 "employee",
                 saved.id,

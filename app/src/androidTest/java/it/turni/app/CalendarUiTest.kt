@@ -6,9 +6,14 @@ import android.net.Uri
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
 import it.turni.app.calendar.WritableCalendar
@@ -89,11 +94,14 @@ class CalendarUiTest {
                         calendars =
                             listOf(WritableCalendar(11, "Telefono", "Locale", localOnly = true))
                     ),
-                    onChoose = {},
+                    onChoose = { _, _ -> },
                     onRetry = {},
                 )
             }
         }
+        compose
+            .onNode(hasScrollToIndexAction())
+            .performScrollToNode(hasText("Solo su questo dispositivo", substring = true))
         compose.onNodeWithText("Solo su questo dispositivo", substring = true).assertIsDisplayed()
     }
 
@@ -132,12 +140,25 @@ class CalendarUiTest {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 1.6f)) {
                 ShiftrailTheme(darkTheme = true) {
-                    CalendarScreen(state, onChoose = { chosen = it }, onRetry = {})
+                    CalendarScreen(
+                        state,
+                        onChoose = { id, enable ->
+                            assertTrue(!enable)
+                            chosen = id
+                        },
+                        onRetry = {},
+                    )
                 }
             }
         }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("first@example.com"))
         compose.onNodeWithText("first@example.com").assertIsDisplayed()
-        compose.onNodeWithText("second@example.com").assertIsDisplayed().performClick()
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("second@example.com"))
+        compose
+            .onNodeWithText("second@example.com")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         compose.runOnIdle { assertEquals(12L, chosen) }
     }
 
@@ -148,14 +169,60 @@ class CalendarUiTest {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 1.6f)) {
                 ShiftrailTheme(darkTheme = false) {
-                    CalendarScreen(AppState(), onChoose = {}, onRetry = { retried = true })
+                    CalendarScreen(AppState(), onChoose = { _, _ -> }, onRetry = { retried = true })
                 }
             }
         }
         compose
-            .onNodeWithText("Nessun calendario visibile e scrivibile", substring = true)
+            .onNodeWithText("Android non rende disponibile alcun calendario", substring = true)
+            .performScrollTo()
             .assertIsDisplayed()
-        compose.onNodeWithText("Riprova").assertIsDisplayed().performClick()
+        compose
+            .onNodeWithText("Aggiorna elenco")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         compose.runOnIdle { assertTrue(retried) }
+    }
+
+    @Test
+    fun hiddenCalendarRequiresExplicitActivationAndReadOnlyCannotBeChosen() {
+        var chosen: Pair<Long, Boolean>? = null
+        compose.setContent {
+            ShiftrailTheme {
+                CalendarScreen(
+                    AppState(
+                        calendars =
+                            listOf(
+                                WritableCalendar(
+                                    11,
+                                    "Nascosto",
+                                    "worker@example.com",
+                                    visible = false,
+                                    syncEnabled = false,
+                                ),
+                                WritableCalendar(
+                                    12,
+                                    "Festività",
+                                    "worker@example.com",
+                                    writable = false,
+                                ),
+                            )
+                    ),
+                    onChoose = { id, enable -> chosen = id to enable },
+                    onRetry = {},
+                )
+            }
+        }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Festività"))
+        compose.onNodeWithText("Festività").assertIsNotEnabled()
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Nascosto"))
+        compose.onNodeWithText("Nascosto").performScrollTo().performClick()
+        compose.onNodeWithText("Attivare questo calendario?").assertIsDisplayed()
+        compose.onNodeWithText("Annulla").performClick()
+        compose.runOnIdle { assertEquals(null, chosen) }
+        compose.onNodeWithText("Nascosto").performClick()
+        compose.onNodeWithText("Attiva e usa").performClick()
+        compose.runOnIdle { assertEquals(11L to true, chosen) }
     }
 }

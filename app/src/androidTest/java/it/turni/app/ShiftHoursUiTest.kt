@@ -151,7 +151,9 @@ class ShiftHoursUiTest {
                 "${CalendarContract.Calendars._ID} = ?",
                 arrayOf(calendarId.toString()),
             )
-            assertFalse(runBlocking { app.calendar.calendars().any { it.id == calendarId } })
+            assertFalse(
+                runBlocking { app.calendar.calendars().single { it.id == calendarId }.visible }
+            )
             compose.waitUntil(15000) {
                 compose
                     .onAllNodesWithText("Importa per ${profile.name}")

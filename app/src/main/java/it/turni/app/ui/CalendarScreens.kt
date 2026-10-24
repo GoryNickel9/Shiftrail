@@ -3,19 +3,56 @@ package it.turni.app.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import it.turni.app.R
+import it.turni.app.calendar.WritableCalendar
 import it.turni.core.ChangeKind
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun CalendarScreen(state: AppState, onChoose: (Long) -> Unit, onRetry: () -> Unit) {
+fun CalendarScreen(state: AppState, onChoose: (Long, Boolean) -> Unit, onRetry: () -> Unit) {
+    var pending by remember { mutableStateOf<WritableCalendar?>(null) }
+    fun choose(calendar: WritableCalendar) {
+        if (!calendar.visible || !calendar.syncEnabled) pending = calendar
+        else onChoose(calendar.id, false)
+    }
+    pending?.let { calendar ->
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            title = { Text(stringResource(R.string.calendar_enable_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.calendar_enable_message,
+                        calendar.name,
+                        calendar.account,
+                    ),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pending = null
+                        onChoose(calendar.id, true)
+                    }
+                ) {
+                    Text(stringResource(R.string.calendar_enable))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pending = null }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
     LazyColumn(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             ImportProgress(3)
@@ -24,23 +61,33 @@ fun CalendarScreen(state: AppState, onChoose: (Long) -> Unit, onRetry: () -> Uni
                 style = MaterialTheme.typography.headlineMedium,
             )
             Text(stringResource(R.string.calendar_help))
+            OutlinedButton(onClick = onRetry, enabled = !state.busy) {
+                Text(stringResource(R.string.calendar_refresh))
+            }
         }
         if (state.calendars.isEmpty())
             item {
                 Text(stringResource(R.string.no_calendar))
-                OutlinedButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
             }
         items(state.calendars, key = { it.id }) { calendar ->
-            Card(onClick = { onChoose(calendar.id) }, Modifier.fillMaxWidth()) {
+            Card(
+                onClick = { choose(calendar) },
+                Modifier.fillMaxWidth(),
+                enabled = calendar.writable && !state.busy,
+            ) {
                 Row(Modifier.padding(16.dp)) {
                     RadioButton(
                         selected = state.settings.calendarId == calendar.id,
-                        onClick = { onChoose(calendar.id) },
+                        onClick = { choose(calendar) },
+                        enabled = calendar.writable && !state.busy,
                     )
                     Column {
                         Text(calendar.name, style = MaterialTheme.typography.titleMedium)
                         Text(calendar.account)
                         if (calendar.localOnly) Text(stringResource(R.string.calendar_local_only))
+                        if (!calendar.writable) Text(stringResource(R.string.calendar_read_only))
+                        if (!calendar.visible) Text(stringResource(R.string.calendar_hidden))
+                        if (!calendar.syncEnabled) Text(stringResource(R.string.calendar_sync_off))
                     }
                 }
             }

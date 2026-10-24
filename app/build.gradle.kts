@@ -12,8 +12,8 @@ android {
         applicationId = "it.turni.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.3.2"
+        versionCode = 13
+        versionName = "0.3.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {

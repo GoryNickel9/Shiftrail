@@ -362,6 +362,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 error.message == "CALENDAR_UNAVAILABLE" -> R.string.no_calendar
                 error.message == "CALENDAR_NOT_WRITABLE" -> R.string.calendar_not_writable
                 error.message == "CALENDAR_SYNC_DISABLED" -> R.string.calendar_sync_disabled
+                error.message == "CALENDAR_ENABLE_FAILED" -> R.string.calendar_enable_failed
                 error.message == "CALENDAR_WRITE_FAILED" -> R.string.calendar_write_failed
                 error.message == "CALENDAR_EDIT_DURATION" -> R.string.calendar_long_event
                 error.message == "EXTRA_DUPLICATE" -> R.string.extra_duplicate
@@ -551,7 +552,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         onLoaded()
     }
 
-    fun prepare(calendarId: Long, onPrepared: () -> Unit) = launchWork {
+    fun prepare(calendarId: Long, enable: Boolean = false, onPrepared: () -> Unit) = launchWork {
         val state = mutable.value
         val profile = requireNotNull(state.profile)
         val result = requireNotNull(state.extraction).table
@@ -559,7 +560,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         require(result.cells.none { it.requiresCalendarReview(state.settings.saveRestDays) }) {
             "REVIEW_REQUIRED"
         }
-        require(app.calendar.calendars().any { it.id == calendarId }) { "CALENDAR_UNAVAILABLE" }
+        if (enable) app.calendar.enableForImport(calendarId)
+        val calendars = app.calendar.calendars()
+        val calendar = calendars.singleOrNull { it.id == calendarId }
+        require(calendar != null) { "CALENDAR_UNAVAILABLE" }
+        require(calendar.writable) { "CALENDAR_NOT_WRITABLE" }
+        require(calendar.visible && calendar.syncEnabled) { "CALENDAR_SYNC_DISABLED" }
         val monday =
             state.confirmedMonday
                 ?: result.cells.firstOrNull()?.date?.with(java.time.DayOfWeek.MONDAY)
@@ -592,6 +598,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         mutable.update {
             it.copy(
                 prepared = plan,
+                calendars = calendars,
                 settings = settings,
                 selectedChanges =
                     plan.changes

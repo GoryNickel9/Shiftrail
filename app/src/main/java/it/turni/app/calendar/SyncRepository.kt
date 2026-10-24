@@ -133,7 +133,7 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
                 eventMarker(plan.employee, it.date, plan.calendar),
             )
         }
-        val ids = calendar.apply(plan.calendar, mutations)
+        val ids = calendar.apply(plan.calendar, mutations, requireVisible = true)
         calendar.verifyInstances(
             plan.calendar,
             plan.changes

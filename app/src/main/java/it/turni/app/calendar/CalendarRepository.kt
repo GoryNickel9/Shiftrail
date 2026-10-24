@@ -20,6 +20,9 @@ data class WritableCalendar(
     val name: String,
     val account: String,
     val localOnly: Boolean = false,
+    val visible: Boolean = true,
+    val syncEnabled: Boolean = true,
+    val writable: Boolean = true,
 )
 
 data class ProviderEvent(
@@ -69,9 +72,12 @@ class CalendarRepository(private val resolver: ContentResolver) {
                         CalendarContract.Calendars.ACCOUNT_NAME,
                         CalendarContract.Calendars.NAME,
                         CalendarContract.Calendars.ACCOUNT_TYPE,
+                        CalendarContract.Calendars.VISIBLE,
+                        CalendarContract.Calendars.SYNC_EVENTS,
+                        CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
                     ),
-                    "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ? AND ${CalendarContract.Calendars.VISIBLE} = 1 AND ${CalendarContract.Calendars.SYNC_EVENTS} = 1",
-                    arrayOf(CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString()),
+                    null,
+                    null,
                     null,
                 )
                 ?.use { cursor ->
@@ -85,12 +91,44 @@ class CalendarRepository(private val resolver: ContentResolver) {
                                     displayName.ifBlank { internalName },
                                     cursor.getString(2).orEmpty(),
                                     cursor.getString(4) == CalendarContract.ACCOUNT_TYPE_LOCAL,
+                                    cursor.getInt(5) == 1,
+                                    cursor.getInt(6) == 1,
+                                    cursor.getInt(7) >=
+                                        CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR,
                                 )
                             )
                         }
                     }
                 }
                 .orEmpty()
+                .sortedWith(
+                    compareBy<WritableCalendar>(
+                        { !it.writable },
+                        { it.localOnly },
+                        { it.name },
+                        { it.id },
+                    )
+                )
+        }
+
+    suspend fun enableForImport(calendarId: Long) =
+        withContext(Dispatchers.IO) {
+            val calendar = calendars().singleOrNull { it.id == calendarId }
+            require(calendar?.writable == true) { "CALENDAR_NOT_WRITABLE" }
+            val count =
+                resolver.update(
+                    ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, calendarId),
+                    ContentValues().apply {
+                        put(CalendarContract.Calendars.VISIBLE, 1)
+                        put(CalendarContract.Calendars.SYNC_EVENTS, 1)
+                    },
+                    null,
+                    null,
+                )
+            val enabled = calendars().singleOrNull { it.id == calendarId }
+            check(count == 1 && enabled?.visible == true && enabled.syncEnabled) {
+                "CALENDAR_ENABLE_FAILED"
+            }
         }
 
     suspend fun event(id: Long): ProviderEvent? = events(listOf(id))[id]
@@ -162,6 +200,7 @@ class CalendarRepository(private val resolver: ContentResolver) {
     suspend fun apply(
         calendar: Long,
         mutations: List<CalendarMutation>,
+        requireVisible: Boolean = false,
     ): Map<java.time.LocalDate, Long?> =
         withContext(Dispatchers.IO) {
             // A linked calendar can be renamed or hidden after the user imports a shift.
@@ -190,6 +229,9 @@ class CalendarRepository(private val resolver: ContentResolver) {
                             "CALENDAR_NOT_WRITABLE"
                         }
                         require(cursor.getInt(1) == 1) { "CALENDAR_SYNC_DISABLED" }
+                        require(!requireVisible || cursor.getInt(2) == 1) {
+                            "CALENDAR_SYNC_DISABLED"
+                        }
                         cursor.getInt(2) == 1
                     } ?: throw IllegalArgumentException("CALENDAR_NOT_WRITABLE")
             val operations = arrayListOf<ContentProviderOperation>()
@@ -336,7 +378,7 @@ class CalendarRepository(private val resolver: ContentResolver) {
                     .query(
                         uri.build(),
                         arrayOf(CalendarContract.Instances.EVENT_ID),
-                        "${CalendarContract.Instances.CALENDAR_ID} = ?",
+                        "${CalendarContract.Instances.CALENDAR_ID} = ? AND ${CalendarContract.Instances.VISIBLE} = 1",
                         arrayOf(calendar.toString()),
                         null,
                     )

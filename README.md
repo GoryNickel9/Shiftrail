@@ -18,7 +18,7 @@ Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i
 2. Scatta una foto o scegli un’immagine con il Photo Picker. Trascina i quattro angoli del crop mantenendo visibili nome, giorni e date.
 3. Controlla la riga scelta e le date. Se il nome è ambiguo, seleziona la riga; se l’anno manca, conferma la data del lunedì.
 4. Correggi, elimina o aggiungi celle. Usa **Mostra origine** per confrontare il contenuto. Sotto 90/100 occorre una verifica esplicita; da 90/100 incluso non compare una conferma individuale. Le celle non riconosciute richiedono correzione o eliminazione.
-5. Scegli il calendario di destinazione tra quelli visibili e scrivibili sul dispositivo: ogni voce mostra nome e account. Verifica il piano di sincronizzazione. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
+5. Scegli il calendario di destinazione: ogni voce mostra nome, account e stato. Sono inclusi calendari nascosti e disattivati; per usarli conferma **Attiva e usa**. Le destinazioni di sola lettura non sono selezionabili. Verifica il piano di sincronizzazione. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
 
 `19-01` produce un evento **Lavoro** dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e, se abilitata nelle impostazioni, produce un evento di intera giornata intitolato **Giorno di riposo**. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
 
@@ -90,5 +90,7 @@ La versione 0.2.3 permette di modificare gli orari dei turni importati da Ore e 
 La versione 0.3.1 rimuove il vincolo sul nome PC Sync dalla scelta della destinazione. Mostra i calendari disponibili con nome e account e mantiene i controlli di scrittura. Le [note della correzione](docs/releases/0.3.1.md) descrivono il problema.
 
 La versione 0.3.2 esclude le destinazioni disattivate e verifica eventi e occorrenze dopo la scrittura. Distingue i calendari locali, riporta la destinazione nel risultato e permette di aprire un turno nell’app Calendario predefinita. Il salvataggio Android e la sincronizzazione con un account sono distinti nelle [note della release](docs/releases/0.3.2.md).
+
+La versione 0.3.3 elenca tutti i calendari esposti dal provider Android, inclusi quelli nascosti, disattivati e di sola lettura. Consente di attivare esplicitamente la destinazione scelta e verifica che le occorrenze appartengano a un calendario visibile. Dettagli nelle [note della release](docs/releases/0.3.3.md).
 
 La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Le correzioni OCR sono documentate per [0.1.1](docs/OCR_FIX_0_1_1.md), [0.1.2](docs/OCR_FIX_0_1_2.md), [0.1.3](docs/OCR_FIX_0_1_3.md) e [0.1.4](docs/OCR_FIX_0_1_4.md).

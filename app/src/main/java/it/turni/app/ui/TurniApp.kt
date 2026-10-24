@@ -197,7 +197,9 @@ fun TurniApp(vm: AppViewModel) {
                         composable("calendars") {
                             CalendarScreen(
                                 state,
-                                onChoose = { id -> vm.prepare(id) { nav.navigate("sync") } },
+                                onChoose = { id, enable ->
+                                    vm.prepare(id, enable) { nav.navigate("sync") }
+                                },
                                 onRetry = { vm.loadCalendars {} },
                             )
                         }
