@@ -18,7 +18,7 @@ La tabella `extra_work` conserva ID, dipendente, data, inizio, fine e data di cr
 
 Ogni turno mostra inizio, fine e durata con il pulsante **Modifica**. Per i turni importati la data rimane fissa; salvare aggiorna anche l’evento nel calendario e ricalcola i totali mensili e settimanali. Il form conserva i valori durante la ricreazione dell’attività, rifiuta orari invalidi o uguali e consente di annullare senza salvare. Se mancano i permessi del calendario, l’app li richiede prima di aprire la modifica.
 
-La modifica scrive nel calendario identificato dal turno salvato, anche se nel frattempo è stato rinominato o nascosto. Il nome PC Sync serve a selezionare la destinazione delle nuove importazioni; non è un requisito per aggiornare un turno già associato. Restano necessari i permessi Android e l’accesso in scrittura a quel calendario.
+La modifica scrive nel calendario identificato dal turno salvato, anche se nel frattempo è stato rinominato o nascosto. Dalla versione 0.3.1 anche le nuove importazioni accettano qualsiasi calendario visibile e scrivibile, indipendentemente dal nome. Restano necessari i permessi Android e l’accesso in scrittura a quel calendario.
 
 Gli istanti del provider vengono letti nel fuso del dispositivo. Una data di fine esplicita permette di conteggiare anche eventi di più giorni, tagliandoli ai confini del periodo. La modifica interna rimane un editor di turni inferiori a 24 ore: gli eventi più lunghi devono essere modificati dal calendario, per conservare la data di fine. Gli eventi ricorrenti non vengono espansi in singole occorrenze.
 

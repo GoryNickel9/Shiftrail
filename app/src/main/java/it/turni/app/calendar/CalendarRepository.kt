@@ -73,18 +73,13 @@ class CalendarRepository(private val resolver: ContentResolver) {
                         while (cursor.moveToNext()) {
                             val displayName = cursor.getString(1).orEmpty()
                             val internalName = cursor.getString(3).orEmpty()
-                            if (
-                                listOf(displayName, internalName).any {
-                                    it.trim().equals("PC Sync", ignoreCase = true)
-                                }
-                            )
-                                add(
-                                    WritableCalendar(
-                                        cursor.getLong(0),
-                                        "Google Calendar",
-                                        cursor.getString(2).orEmpty(),
-                                    )
+                            add(
+                                WritableCalendar(
+                                    cursor.getLong(0),
+                                    displayName.ifBlank { internalName },
+                                    cursor.getString(2).orEmpty(),
                                 )
+                            )
                         }
                     }
                 }

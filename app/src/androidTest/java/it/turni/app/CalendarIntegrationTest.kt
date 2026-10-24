@@ -46,7 +46,7 @@ class CalendarIntegrationTest {
             ContentValues().apply {
                 put(CalendarContract.Calendars.ACCOUNT_NAME, "turni-test")
                 put(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL)
-                put(CalendarContract.Calendars.NAME, " pC SyNc ")
+                put(CalendarContract.Calendars.NAME, "work-calendar")
                 put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "Turni test")
                 put(CalendarContract.Calendars.CALENDAR_COLOR, 0xff006c67.toInt())
                 put(
@@ -106,9 +106,20 @@ class CalendarIntegrationTest {
                         )
                     )
                 )
-            assertTrue(provider.calendars().any { it.id == id })
-            assertEquals("Google Calendar", provider.calendars().single { it.id == id }.name)
-            assertFalse(provider.calendars().any { it.id == otherId || it.id == readOnlyId })
+            val calendars = provider.calendars()
+            assertEquals("Turni test", calendars.single { it.id == id }.name)
+            assertEquals("turni-test", calendars.single { it.id == id }.account)
+            assertEquals("Other calendar", calendars.single { it.id == otherId }.name)
+            assertFalse(calendars.any { it.id == readOnlyId })
+            resolver.update(
+                calendarUri,
+                ContentValues().apply {
+                    put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "")
+                },
+                "${CalendarContract.Calendars._ID} = ?",
+                arrayOf(otherId.toString()),
+            )
+            assertEquals("other-calendar", provider.calendars().single { it.id == otherId }.name)
             resolver
                 .query(
                     ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, id),
@@ -318,7 +329,7 @@ class CalendarIntegrationTest {
                     put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "Lavoro")
                 }
             )
-            assertFalse(provider.calendars().any { it.id == id })
+            assertEquals("Lavoro", provider.calendars().single { it.id == id }.name)
             sync.updateHours(
                 "employee",
                 saved.id,
@@ -333,6 +344,7 @@ class CalendarIntegrationTest {
                     put(CalendarContract.Calendars.VISIBLE, 0)
                 }
             )
+            assertFalse(provider.calendars().any { it.id == id })
             sync.updateHours(
                 "employee",
                 saved.id,

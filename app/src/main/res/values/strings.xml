@@ -52,8 +52,8 @@
     <string name="invalid_cell">Inserisci una data della settimana e un orario valido o X per riposo. Ogni giorno può avere una sola cella.</string>
     <string name="review_required">Correggi gli elementi non riconosciuti e conferma quelli incerti prima di continuare.</string>
     <string name="choose_calendar">Calendario destinazione</string>
-    <string name="calendar_help">Google Calendar usa il calendario PC Sync presente nel dispositivo.</string>
-    <string name="no_calendar">PC Sync non è disponibile o non è scrivibile. Abilitalo nel calendario del dispositivo e riprova.</string>
+    <string name="calendar_help">Scegli il calendario in cui salvare i turni. Sotto ogni nome trovi l’account associato.</string>
+    <string name="no_calendar">Nessun calendario visibile e scrivibile disponibile. Apri l’app Calendario, verifica che il calendario desiderato sia attivo e che tu possa aggiungere eventi, poi torna qui e premi Riprova.</string>
     <string name="calendar_not_writable">Il calendario associato al turno non è disponibile o non consente modifiche. Controlla i permessi e l’accesso in scrittura al calendario.</string>
     <string name="calendar_long_event">Questo evento dura almeno 24 ore: modificalo dall’app Calendario. Le ore si aggiorneranno automaticamente.</string>
     <string name="retry">Riprova</string>

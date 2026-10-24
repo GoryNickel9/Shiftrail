@@ -18,7 +18,7 @@ Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i
 2. Scatta una foto o scegli un’immagine con il Photo Picker. Trascina i quattro angoli del crop mantenendo visibili nome, giorni e date.
 3. Controlla la riga scelta e le date. Se il nome è ambiguo, seleziona la riga; se l’anno manca, conferma la data del lunedì.
 4. Correggi, elimina o aggiungi celle. Usa **Mostra origine** per confrontare il contenuto. Sotto 90/100 occorre una verifica esplicita; da 90/100 incluso non compare una conferma individuale. Le celle non riconosciute richiedono correzione o eliminazione.
-5. Scegli **Google Calendar**, che identifica esclusivamente il calendario PC Sync del dispositivo, e verifica il piano di sincronizzazione. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
+5. Scegli il calendario di destinazione tra quelli visibili e scrivibili sul dispositivo: ogni voce mostra nome e account. Verifica il piano di sincronizzazione. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
 
 `19-01` produce un evento **Lavoro** dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e, se abilitata nelle impostazioni, produce un evento di intera giornata intitolato **Giorno di riposo**. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
 
@@ -86,5 +86,7 @@ La versione 0.2.1 elimina Storico e la schermata di diagnostica, limita Impostaz
 La versione 0.2.2 aggiunge Ore, extra manuali, preferenze del calendario e migrazione Room 1→2. PC Sync viene mostrato come Google Calendar; i turni si chiamano Lavoro. L’OCR rilegge anche gli intervalli validi con punteggio basso. La [schermata mensile](docs/images/shiftrail-hours-month.png) e la [settimana selezionata](docs/images/shiftrail-hours-week.png) usano dati sintetici. Risultati e limiti sono in [UI_RELEASE_0_2_2.md](docs/UI_RELEASE_0_2_2.md).
 
 La versione 0.2.3 permette di modificare gli orari dei turni importati da Ore e aggiorna direttamente il calendario associato. Il salvataggio verifica l’accesso in scrittura tramite l’ID del calendario: non richiede che sia visibile o che conservi il nome PC Sync. I dettagli sono in [sincronizzazione calendario](docs/CALENDAR_SYNC.md).
+
+La versione 0.3.1 rimuove il vincolo sul nome PC Sync dalla scelta della destinazione. Mostra i calendari disponibili con nome e account e mantiene i controlli di scrittura. Le [note della correzione](docs/releases/0.3.1.md) descrivono il problema.
 
 La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Le correzioni OCR sono documentate per [0.1.1](docs/OCR_FIX_0_1_1.md), [0.1.2](docs/OCR_FIX_0_1_2.md), [0.1.3](docs/OCR_FIX_0_1_3.md) e [0.1.4](docs/OCR_FIX_0_1_4.md).
