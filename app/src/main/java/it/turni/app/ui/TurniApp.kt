@@ -73,8 +73,10 @@ fun TurniApp(vm: AppViewModel) {
     val route = entry?.destination?.route ?: "home"
     ShiftrailTheme {
         if (!state.busy && state.updater.release != null) {
-            RequiredUpdateScreen(state.updater, vm::downloadUpdate, vm::installUpdate) {
-                vm.checkUpdates()
+            Surface(Modifier.fillMaxSize()) {
+                RequiredUpdateScreen(state.updater, vm::downloadUpdate, vm::installUpdate) {
+                    vm.checkUpdates()
+                }
             }
             BackHandler {}
             return@ShiftrailTheme
