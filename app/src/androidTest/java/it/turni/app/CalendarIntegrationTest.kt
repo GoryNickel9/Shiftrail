@@ -423,6 +423,7 @@ class CalendarIntegrationTest {
                 movedDay.atTime(21, 0).atZone(ZoneId.of("Europe/Rome")).toInstant().toEpochMilli(),
                 provider.event(eventId)!!.start,
             )
+            provider.enableForImport(id)
             val missing = sync.prepare("employee", monday, id, "hash3", cells(""), emptyList())
             assertEquals(ChangeKind.MISSING, missing.changes.single().kind)
             sync.commit(missing, emptySet())
