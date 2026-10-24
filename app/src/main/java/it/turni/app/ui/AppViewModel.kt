@@ -45,6 +45,8 @@ data class AppState(
     val selectedChanges: Set<LocalDate> = emptySet(),
     val duplicatePhoto: Boolean = false,
     val syncCount: Int? = null,
+    val syncedCalendar: WritableCalendar? = null,
+    val syncedShift: ShiftEntity? = null,
     val hoursPeriods: List<WorkPeriod> = emptyList(),
     val hoursExtras: List<ExtraWorkEntity> = emptyList(),
     val hoursLoaded: Boolean = false,
@@ -359,6 +361,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 error.message == "INVALID_CROP" -> R.string.invalid_crop
                 error.message == "CALENDAR_UNAVAILABLE" -> R.string.no_calendar
                 error.message == "CALENDAR_NOT_WRITABLE" -> R.string.calendar_not_writable
+                error.message == "CALENDAR_SYNC_DISABLED" -> R.string.calendar_sync_disabled
+                error.message == "CALENDAR_WRITE_FAILED" -> R.string.calendar_write_failed
                 error.message == "CALENDAR_EDIT_DURATION" -> R.string.calendar_long_event
                 error.message == "EXTRA_DUPLICATE" -> R.string.extra_duplicate
                 error.message == "CALENDAR_OWNERSHIP_CHANGED" ||
@@ -614,9 +618,23 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun synchronize(onDone: () -> Unit) = launchWork {
         val plan = requireNotNull(mutable.value.prepared)
         val count = app.sync.commit(plan, mutable.value.selectedChanges)
+        val shift =
+            dao.previous(
+                    plan.employee,
+                    plan.monday.toString(),
+                    plan.monday.plusDays(6).toString(),
+                    plan.calendar,
+                )
+                .filter { saved ->
+                    plan.changes.any { it.incoming != null && it.date.toString() == saved.date }
+                }
+                .minByOrNull { it.date }
         mutable.update {
             it.copy(
                 syncCount = count,
+                syncedCalendar =
+                    it.calendars.firstOrNull { calendar -> calendar.id == plan.calendar },
+                syncedShift = shift,
                 prepared = null,
                 image = null,
                 analyzed = null,

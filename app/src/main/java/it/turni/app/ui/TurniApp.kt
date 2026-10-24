@@ -207,7 +207,7 @@ fun TurniApp(vm: AppViewModel) {
                             }
                         }
                         composable("result") {
-                            ResultScreen(state.syncCount ?: 0) { nav.popBackStack("home", false) }
+                            ResultScreen(state, vm::reportError) { nav.popBackStack("home", false) }
                         }
                     }
                 if (state.busy || !state.loaded)

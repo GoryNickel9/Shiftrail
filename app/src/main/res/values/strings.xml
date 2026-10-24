@@ -55,6 +55,11 @@
     <string name="calendar_help">Scegli il calendario in cui salvare i turni. Sotto ogni nome trovi l’account associato.</string>
     <string name="no_calendar">Nessun calendario visibile e scrivibile disponibile. Apri l’app Calendario, verifica che il calendario desiderato sia attivo e che tu possa aggiungere eventi, poi torna qui e premi Riprova.</string>
     <string name="calendar_not_writable">Il calendario associato al turno non è disponibile o non consente modifiche. Controlla i permessi e l’accesso in scrittura al calendario.</string>
+    <string name="calendar_sync_disabled">La sincronizzazione del calendario scelto è disattivata. Attivalo nell’app Calendario e riprova.</string>
+    <string name="calendar_write_failed">Il calendario non ha conservato gli eventi richiesti. Controlla che la destinazione sia attiva e riprova l’importazione.</string>
+    <string name="calendar_local_only">Solo su questo dispositivo: questo calendario non si sincronizza con Google o altri account.</string>
+    <string name="open_calendar">Apri nel calendario</string>
+    <string name="calendar_app_missing">Nessuna app Calendario disponibile per aprire l’evento. Installa o abilita un’app Calendario.</string>
     <string name="calendar_long_event">Questo evento dura almeno 24 ore: modificalo dall’app Calendario. Le ore si aggiorneranno automaticamente.</string>
     <string name="retry">Riprova</string>
     <string name="sync_preview">Conferma sincronizzazione</string>
@@ -67,9 +72,9 @@
     <string name="before">Prima: %1$s</string>
     <string name="after">Nuovo: %1$s</string>
     <string name="sync_button">Applica le scelte al calendario</string>
-    <string name="sync_result">Sincronizzazione completata</string>
+    <string name="sync_result">Salvataggio nel calendario completato</string>
     <string name="sync_count">Modifiche applicate: %1$d</string>
-    <string name="done_note">Gli eventi sono nel calendario scelto.</string>
+    <string name="done_note">Gli eventi sono salvati nel calendario Android indicato. Verifica che sia selezionato nell’app Calendario. La sincronizzazione con altri dispositivi dipende dall’account e dalle impostazioni Android.</string>
     <string name="calendar_conflict">L’evento associato è stato spostato o il suo identificatore è in conflitto. Controlla il calendario prima di riprovare.</string>
     <string name="dst_error">Questo orario cade in un cambio di ora legale ed è inesistente o ambiguo. Correggilo esplicitamente prima di esportare.</string>
     <string name="ocr_disagreement">Letture OCR discordanti. Controlla Mostra origine e usa Modifica per inserire il valore corretto.</string>

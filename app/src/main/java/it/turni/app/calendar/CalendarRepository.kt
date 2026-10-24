@@ -15,7 +15,12 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.withContext
 
-data class WritableCalendar(val id: Long, val name: String, val account: String)
+data class WritableCalendar(
+    val id: Long,
+    val name: String,
+    val account: String,
+    val localOnly: Boolean = false,
+)
 
 data class ProviderEvent(
     val id: Long,
@@ -63,8 +68,9 @@ class CalendarRepository(private val resolver: ContentResolver) {
                         CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
                         CalendarContract.Calendars.ACCOUNT_NAME,
                         CalendarContract.Calendars.NAME,
+                        CalendarContract.Calendars.ACCOUNT_TYPE,
                     ),
-                    "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ? AND ${CalendarContract.Calendars.VISIBLE} = 1",
+                    "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ? AND ${CalendarContract.Calendars.VISIBLE} = 1 AND ${CalendarContract.Calendars.SYNC_EVENTS} = 1",
                     arrayOf(CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString()),
                     null,
                 )
@@ -78,6 +84,7 @@ class CalendarRepository(private val resolver: ContentResolver) {
                                     cursor.getLong(0),
                                     displayName.ifBlank { internalName },
                                     cursor.getString(2).orEmpty(),
+                                    cursor.getString(4) == CalendarContract.ACCOUNT_TYPE_LOCAL,
                                 )
                             )
                         }
@@ -158,27 +165,42 @@ class CalendarRepository(private val resolver: ContentResolver) {
     ): Map<java.time.LocalDate, Long?> =
         withContext(Dispatchers.IO) {
             // A linked calendar can be renamed or hidden after the user imports a shift.
-            val writable =
+            val visible =
                 resolver
                     .query(
                         ContentUris.withAppendedId(
                             CalendarContract.Calendars.CONTENT_URI,
                             calendar,
                         ),
-                        arrayOf(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL),
+                        arrayOf(
+                            CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+                            CalendarContract.Calendars.SYNC_EVENTS,
+                            CalendarContract.Calendars.VISIBLE,
+                        ),
                         null,
                         null,
                         null,
                     )
                     ?.use { cursor ->
-                        cursor.moveToFirst() &&
-                            cursor.getInt(0) >= CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR
-                    } ?: false
-            require(writable) { "CALENDAR_NOT_WRITABLE" }
+                        require(
+                            cursor.moveToFirst() &&
+                                cursor.getInt(0) >=
+                                    CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR
+                        ) {
+                            "CALENDAR_NOT_WRITABLE"
+                        }
+                        require(cursor.getInt(1) == 1) { "CALENDAR_SYNC_DISABLED" }
+                        cursor.getInt(2) == 1
+                    } ?: throw IllegalArgumentException("CALENDAR_NOT_WRITABLE")
             val operations = arrayListOf<ContentProviderOperation>()
             val indices = mutableMapOf<java.time.LocalDate, Int>()
+            val previousIds = mutableMapOf<java.time.LocalDate, Long>()
             for (mutation in mutations) {
-                val old = mutation.oldId?.let { event(it) }
+                // A previous batch may have succeeded before verification or Room failed.
+                val old =
+                    mutation.oldId?.let { event(it) }
+                        ?: findMarker(calendar, mutation.marker)?.let { event(it) }
+                old?.let { previousIds[mutation.date] = it.id }
                 if (old != null)
                     require(
                         old.calendarId == calendar && old.description.contains(mutation.marker)
@@ -264,14 +286,64 @@ class CalendarRepository(private val resolver: ContentResolver) {
             val results =
                 if (operations.isEmpty()) emptyArray()
                 else resolver.applyBatch(CalendarContract.AUTHORITY, operations)
-            mutations.associate { mutation ->
+            val ids = mutations.associate { mutation ->
                 mutation.date to
                     when {
                         mutation.event == null -> null
                         results.getOrNull(indices[mutation.date] ?: -1)?.uri != null ->
                             ContentUris.parseId(results[indices.getValue(mutation.date)].uri!!)
-                        else -> mutation.oldId
+                        else -> previousIds[mutation.date]
                     }
             }
+            val written = mutations.filter { it.event != null }
+            val stored = events(ids.values.filterNotNull())
+            for (mutation in written) {
+                val incoming = requireNotNull(mutation.event)
+                val actual = stored[ids[mutation.date]]
+                check(
+                    actual != null &&
+                        actual.calendarId == calendar &&
+                        actual.start == incoming.startMillis &&
+                        actual.end == incoming.endMillis &&
+                        actual.allDay == incoming.allDay &&
+                        actual.title == incoming.title &&
+                        actual.location == incoming.location &&
+                        actual.description.contains(mutation.marker)
+                ) {
+                    "CALENDAR_WRITE_FAILED"
+                }
+            }
+            if (visible && written.isNotEmpty()) {
+                verifyInstances(
+                    calendar,
+                    written.associate {
+                        requireNotNull(ids[it.date]) to requireNotNull(it.event)
+                    },
+                )
+            }
+            ids
+        }
+
+    suspend fun verifyInstances(calendar: Long, expected: Map<Long, CalendarEvent>) =
+        withContext(Dispatchers.IO) {
+            if (expected.isEmpty()) return@withContext
+            // Events rows alone do not prove that the calendar can display the imported week.
+            val uri = CalendarContract.Instances.CONTENT_URI.buildUpon()
+            ContentUris.appendId(uri, expected.values.minOf { it.startMillis })
+            ContentUris.appendId(uri, expected.values.maxOf { it.endMillis })
+            val instances =
+                resolver
+                    .query(
+                        uri.build(),
+                        arrayOf(CalendarContract.Instances.EVENT_ID),
+                        "${CalendarContract.Instances.CALENDAR_ID} = ?",
+                        arrayOf(calendar.toString()),
+                        null,
+                    )
+                    ?.use { cursor ->
+                        buildSet { while (cursor.moveToNext()) add(cursor.getLong(0)) }
+                    }
+                    .orEmpty()
+            check(expected.keys.all { it in instances }) { "CALENDAR_WRITE_FAILED" }
         }
 }

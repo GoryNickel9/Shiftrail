@@ -134,6 +134,14 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
             )
         }
         val ids = calendar.apply(plan.calendar, mutations)
+        calendar.verifyInstances(
+            plan.calendar,
+            plan.changes
+                .filter { it.kind == ChangeKind.UNCHANGED }
+                .associate {
+                    requireNotNull(it.previous).eventId to requireNotNull(it.incoming)
+                },
+        )
         val now = System.currentTimeMillis()
         val weekId = sha256("${plan.employee}|${plan.monday}")
         db.withTransaction {

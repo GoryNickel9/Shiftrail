@@ -89,4 +89,6 @@ La versione 0.2.3 permette di modificare gli orari dei turni importati da Ore e 
 
 La versione 0.3.1 rimuove il vincolo sul nome PC Sync dalla scelta della destinazione. Mostra i calendari disponibili con nome e account e mantiene i controlli di scrittura. Le [note della correzione](docs/releases/0.3.1.md) descrivono il problema.
 
+La versione 0.3.2 esclude le destinazioni disattivate e verifica eventi e occorrenze dopo la scrittura. Distingue i calendari locali, riporta la destinazione nel risultato e permette di aprire un turno nell’app Calendario predefinita. Il salvataggio Android e la sincronizzazione con un account sono distinti nelle [note della release](docs/releases/0.3.2.md).
+
 La procedura di validazione e il benchmark sono descritti in [docs/VALIDATION.md](docs/VALIDATION.md). Le correzioni OCR sono documentate per [0.1.1](docs/OCR_FIX_0_1_1.md), [0.1.2](docs/OCR_FIX_0_1_2.md), [0.1.3](docs/OCR_FIX_0_1_3.md) e [0.1.4](docs/OCR_FIX_0_1_4.md).

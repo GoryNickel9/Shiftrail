@@ -1,8 +1,12 @@
 package it.turni.app.ui
 
+import android.content.ActivityNotFoundException
+import android.content.ContentUris
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
+import android.provider.CalendarContract
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -171,11 +175,40 @@ private fun ShiftSummary(shift: ShiftEntity) {
 }
 
 @Composable
-fun ResultScreen(count: Int, onHome: () -> Unit) {
+fun ResultScreen(state: AppState, onError: (String) -> Unit, onHome: () -> Unit) {
+    val context = LocalContext.current
     ScreenColumn {
         Text(stringResource(R.string.sync_result), style = MaterialTheme.typography.headlineMedium)
-        Text(stringResource(R.string.sync_count, count))
+        Text(stringResource(R.string.sync_count, state.syncCount ?: 0))
+        state.syncedCalendar?.let { calendar ->
+            Text(calendar.name, style = MaterialTheme.typography.titleMedium)
+            Text(calendar.account)
+            if (calendar.localOnly) Text(stringResource(R.string.calendar_local_only))
+        }
         Text(stringResource(R.string.done_note))
+        state.syncedShift?.let { shift ->
+            OutlinedButton(
+                onClick = {
+                    try {
+                        context.startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                ContentUris.withAppendedId(
+                                    CalendarContract.Events.CONTENT_URI,
+                                    shift.calendarEventId,
+                                ),
+                            )
+                        )
+                    } catch (_: ActivityNotFoundException) {
+                        onError(context.getString(R.string.calendar_app_missing))
+                    } catch (_: SecurityException) {
+                        onError(context.getString(R.string.permission_denied))
+                    }
+                }
+            ) {
+                Text(stringResource(R.string.open_calendar))
+            }
+        }
         Button(onClick = onHome) { Text(stringResource(R.string.home)) }
     }
 }

@@ -40,6 +40,7 @@ fun CalendarScreen(state: AppState, onChoose: (Long) -> Unit, onRetry: () -> Uni
                     Column {
                         Text(calendar.name, style = MaterialTheme.typography.titleMedium)
                         Text(calendar.account)
+                        if (calendar.localOnly) Text(stringResource(R.string.calendar_local_only))
                     }
                 }
             }
@@ -63,6 +64,13 @@ fun SyncScreen(state: AppState, vm: AppViewModel, synchronize: () -> Unit) {
                     style = MaterialTheme.typography.headlineMedium,
                 )
                 Text(stringResource(R.string.sync_help))
+                state.calendars
+                    .firstOrNull { it.id == plan.calendar }
+                    ?.let { calendar ->
+                        Text(calendar.name, style = MaterialTheme.typography.titleMedium)
+                        Text(calendar.account)
+                        if (calendar.localOnly) Text(stringResource(R.string.calendar_local_only))
+                    }
             }
             items(plan.changes, key = { it.date.toString() }) { change ->
                 val title =
