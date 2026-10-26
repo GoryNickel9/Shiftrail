@@ -92,6 +92,21 @@ class WorkingHoursTest {
         period("zero", "2026-10-05", "12:00", "12:00")
     }
 
+    @Test
+    fun overlappingExtrasAndScheduledHoursAreCountedOnce() {
+        val periods =
+            listOf(
+                period("work", "2026-10-05", "16:00", "18:00"),
+                period("extra1", "2026-10-05", "13:00", "17:00", WorkSource.EXTRA),
+                period("extra2", "2026-10-05", "15:00", "20:00", WorkSource.EXTRA),
+            )
+        val result = WorkingHours.summarize(periods.reversed(), october)
+        assertEquals(120L, result.workMinutes)
+        assertEquals(300L, result.extraMinutes)
+        assertEquals(420L, result.totalMinutes)
+        assertEquals(result, WorkingHours.summarize(periods, october))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun duplicatePeriodIdsAreRejected() {
         val work = period("same", "2026-10-05", "12:00", "15:00")

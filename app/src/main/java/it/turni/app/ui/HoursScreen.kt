@@ -37,6 +37,8 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
     var adding by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingEditId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingAdd by rememberSaveable { mutableStateOf(false) }
+    var pendingDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
     var deletingId by rememberSaveable { mutableStateOf<String?>(null) }
     val editing = state.hoursPeriods.firstOrNull { it.id == editingId }
     val deleting = state.hoursExtras.firstOrNull { it.id == deletingId }
@@ -48,10 +50,17 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
             result ->
             if (calendarPermissions.all { result[it] == true }) {
                 editingId = pendingEditId
+                adding = pendingAdd
+                deletingId = pendingDeleteId
                 vm.refreshCalendar()
             } else vm.reportError(context.getString(R.string.permission_denied))
             pendingEditId = null
+            pendingAdd = false
+            pendingDeleteId = null
         }
+    fun canWriteCalendar() = calendarPermissions.all {
+        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+    }
     LaunchedEffect(monthText, state.profile?.id) { vm.loadHours(month) }
     val weeks = WorkingHours.monthWeeks(month)
     val window = weeks.getOrNull(weekIndex) ?: HoursWindow(month.atDay(1), month.atEndOfMonth())
@@ -222,16 +231,7 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 TextButton(
                                     onClick = {
-                                        if (
-                                            period.source == WorkSource.EXTRA ||
-                                                calendarPermissions.all {
-                                                    ContextCompat.checkSelfPermission(
-                                                        context,
-                                                        it,
-                                                    ) == PackageManager.PERMISSION_GRANTED
-                                                }
-                                        )
-                                            editingId = period.id
+                                        if (canWriteCalendar()) editingId = period.id
                                         else {
                                             pendingEditId = period.id
                                             permissions.launch(calendarPermissions.toTypedArray())
@@ -243,7 +243,17 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                                     Text(stringResource(R.string.edit))
                                 }
                                 if (extra != null)
-                                    TextButton(onClick = { deletingId = extra.id }) {
+                                    TextButton(
+                                        onClick = {
+                                            if (canWriteCalendar()) deletingId = extra.id
+                                            else {
+                                                pendingDeleteId = extra.id
+                                                permissions.launch(
+                                                    calendarPermissions.toTypedArray()
+                                                )
+                                            }
+                                        }
+                                    ) {
                                         Text(stringResource(R.string.delete))
                                     }
                             }
@@ -256,7 +266,13 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
             ActionFooter(
                 stringResource(R.string.add_extra),
                 enabled = !state.busy,
-                action = { adding = true },
+                action = {
+                    if (canWriteCalendar()) adding = true
+                    else {
+                        pendingAdd = true
+                        permissions.launch(calendarPermissions.toTypedArray())
+                    }
+                },
             )
     }
     if (choosingMonth)

@@ -205,15 +205,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun watchHours(employee: String) {
         hoursJob?.cancel()
-        val from = hoursMonth.atDay(1).minusDays(1).toString()
-        val until = hoursMonth.atEndOfMonth().toString()
         mutable.update {
             it.copy(hoursLoaded = false, hoursPeriods = emptyList(), hoursExtras = emptyList())
         }
         hoursJob = viewModelScope.launch {
             combine(
                     dao.allRecordedShifts(employee),
-                    dao.extraWork(employee, from, until),
+                    dao.allExtraWork(employee),
                     calendarRefresh.flatMapLatest {
                         if (
                             ContextCompat.checkSelfPermission(
@@ -241,10 +239,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                                 current,
                                 app.calendar.events(current.map { it.calendarEventId }),
                                 ZoneId.systemDefault(),
+                                extras,
                             )
                         else
                             CalendarSchedule(
-                                current,
+                                current
+                                    .map { extraHoursSummary(it, extras) }
+                                    .filter { it.type != CellType.EMPTY.name },
                                 current
                                     .filter { it.type == CellType.WORK_SHIFT.name }
                                     .map {
@@ -298,9 +299,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val employee = requireNotNull(mutable.value.profile).id
         require(start != end)
         require(previous == null || previous.employeeId == employee)
-        val duplicate = dao.findExtra(employee, date.toString(), start.toString(), end.toString())
-        require(duplicate == null || duplicate.id == previous?.id) { "EXTRA_DUPLICATE" }
-        dao.saveExtra(
+        app.sync.saveExtra(
             ExtraWorkEntity(
                 previous?.id ?: UUID.randomUUID().toString(),
                 employee,
@@ -308,7 +307,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 start.toString(),
                 end.toString(),
                 previous?.createdAt ?: System.currentTimeMillis(),
-            )
+            ),
+            previous,
+            mutable.value.settings.calendarId,
+            extraEventOptions(),
+            ZoneId.systemDefault(),
         )
         onSaved()
     }
@@ -339,9 +342,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun removeExtra(extra: ExtraWorkEntity, onRemoved: () -> Unit) = launchWork {
         val employee = requireNotNull(mutable.value.profile).id
         require(extra.employeeId == employee)
-        dao.removeExtra(extra.id, employee)
+        app.sync.removeExtra(extra, extraEventOptions(), ZoneId.systemDefault())
         onRemoved()
     }
+
+    private fun extraEventOptions() =
+        mutable.value.settings.let {
+            EventOptions(
+                location = it.location,
+                description = it.description,
+                reminderMinutes = it.reminderMinutes,
+                color = it.eventColor,
+                restColor = it.restColor,
+                saveRestDays = it.saveRestDays,
+            )
+        }
 
     private fun launchWork(block: suspend () -> Unit) {
         if (mutable.value.busy) return
@@ -374,6 +389,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 error.message == "CALENDAR_WRITE_FAILED" -> R.string.calendar_write_failed
                 error.message == "CALENDAR_EDIT_DURATION" -> R.string.calendar_long_event
                 error.message == "EXTRA_DUPLICATE" -> R.string.extra_duplicate
+                error.message == "CALENDAR_EXTRA_CONFLICT" || error.message == "EXTRA_CHANGED" ->
+                    R.string.extra_calendar_conflict
                 error.message == "CALENDAR_OWNERSHIP_CHANGED" ||
                     error.message == "MULTIPLE_CALENDAR_MATCHES" -> R.string.calendar_conflict
                 else -> R.string.operation_failed
@@ -604,20 +621,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             state.confirmedMonday
                 ?: result.cells.firstOrNull()?.date?.with(java.time.DayOfWeek.MONDAY)
                 ?: throw IllegalArgumentException("REVIEW_REQUIRED")
+        val options = extraEventOptions()
         val events =
             result.cells.mapNotNull {
                 EventFactory.create(
                     it,
                     emptyList(),
-                    EventOptions(
-                        EventFactory.WORK_EVENT_TITLE,
-                        state.settings.location,
-                        state.settings.description,
-                        state.settings.reminderMinutes,
-                        state.settings.eventColor,
-                        state.settings.restColor,
-                        state.settings.saveRestDays,
-                    ),
+                    options,
                     ZoneId.systemDefault(),
                 )
             }
@@ -626,7 +636,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 result.cells.firstOrNull { it.date == monday.plusDays(day) }
                     ?: ShiftParser.parse("", monday.plusDays(day))
             }
-        val plan = app.sync.prepare(profile.id, monday, calendarId, state.hash, fullCells, events)
+        val plan =
+            app.sync.prepare(profile.id, monday, calendarId, state.hash, fullCells, events, options)
         val settings = state.settings.copy(calendarId = calendarId)
         dao.saveSettings(settings)
         mutable.update {

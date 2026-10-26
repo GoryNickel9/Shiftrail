@@ -66,13 +66,26 @@ object WorkingHours {
         val from = window.from.atStartOfDay()
         val until = window.until.plusDays(1).atStartOfDay()
         require(periods.map { it.id }.distinct().size == periods.size) { "DUPLICATE_WORK_PERIOD" }
+        val occupied = mutableListOf<Pair<LocalDateTime, LocalDateTime>>()
         return HoursSummary(
             periods
+                .sortedWith(compareBy({ it.source }, { it.startDateTime }, { it.id }))
                 .mapNotNull { period ->
                     val start = maxOf(from, period.startDateTime)
                     val end = minOf(until, period.endDateTime)
                     if (end <= start) null
-                    else HoursEntry(period, Duration.between(start, end).toMinutes())
+                    else {
+                        var cursor = start
+                        var uncovered = Duration.ZERO
+                        for ((usedStart, usedEnd) in occupied.sortedBy { it.first }) {
+                            if (usedEnd <= cursor || usedStart >= end) continue
+                            if (usedStart > cursor) uncovered += Duration.between(cursor, usedStart)
+                            cursor = maxOf(cursor, minOf(usedEnd, end))
+                        }
+                        uncovered += Duration.between(cursor, end)
+                        occupied += start to end
+                        HoursEntry(period, uncovered.toMinutes())
+                    }
                 }
                 .sortedWith(compareBy({ it.period.startDateTime }, { it.period.id }))
         )

@@ -144,6 +144,9 @@ interface TurniDao {
 
     @Upsert suspend fun saveWeek(week: WeekEntity)
 
+    @Query("SELECT * FROM weeks WHERE employeeId = :employee AND weekStart = :monday LIMIT 1")
+    suspend fun weekFor(employee: String, monday: String): WeekEntity?
+
     @Upsert suspend fun saveShift(shift: ShiftEntity)
 
     @Query("SELECT * FROM shifts WHERE id = :id AND employeeId = :employee")
@@ -162,6 +165,9 @@ interface TurniDao {
 
     @Query("SELECT * FROM shifts WHERE employeeId = :employee ORDER BY date")
     fun allRecordedShifts(employee: String): Flow<List<ShiftEntity>>
+
+    @Query("SELECT * FROM extra_work WHERE employeeId = :employee ORDER BY date, startTime, id")
+    fun allExtraWork(employee: String): Flow<List<ExtraWorkEntity>>
 
     @Query(
         "SELECT * FROM extra_work WHERE employeeId = :employee AND date BETWEEN :fromDate AND :untilDate ORDER BY date, startTime"

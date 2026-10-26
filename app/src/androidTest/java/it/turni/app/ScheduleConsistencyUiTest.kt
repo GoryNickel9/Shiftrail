@@ -17,6 +17,7 @@ import it.turni.core.*
 import java.io.File
 import java.time.*
 import java.time.temporal.TemporalAdjusters
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
@@ -111,6 +112,50 @@ class ScheduleConsistencyUiTest {
                         .asAndroidBitmap()
                         .compress(Bitmap.CompressFormat.PNG, 100, it)
                 }
+                compose.runOnIdle {
+                    vm.saveExtra(sunday, LocalTime.of(10, 30), LocalTime.of(12, 30), null) {}
+                }
+                compose.waitUntil(15000) {
+                    !vm.state.value.busy &&
+                        vm.state.value.hoursExtras.any { it.date == sunday.toString() }
+                }
+                compose.runOnIdle {
+                    vm.saveExtra(sunday, LocalTime.of(15, 30), LocalTime.of(17, 30), null) {}
+                }
+                compose.waitUntil(15000) {
+                    !vm.state.value.busy &&
+                        vm.state.value.upcoming.any {
+                            it.id == "consistency-6-2" &&
+                                it.startTime == "10:30" &&
+                                it.endTime == "17:30"
+                        }
+                }
+                compose
+                    .onNode(hasScrollToIndexAction())
+                    .performScrollToNode(hasTestTag("home_shift_consistency-6-2"))
+                compose.onNodeWithText("10:30 → 17:30").assertIsDisplayed()
+                assertEquals(
+                    420L,
+                    WorkingHours.summarize(vm.state.value.hoursPeriods, HoursWindow(sunday, sunday))
+                        .totalMinutes,
+                )
+                compose.runOnIdle { vm.loadHours(YearMonth.from(sunday).minusMonths(3)) }
+                compose.waitUntil(15000) { vm.state.value.hoursLoaded }
+                assertEquals(
+                    "17:30",
+                    vm.state.value.upcoming.single { it.id == "consistency-6-2" }.endTime,
+                )
+                val extras = vm.state.value.hoursExtras.filter { it.date == sunday.toString() }
+                for (extra in extras) {
+                    var removed = false
+                    compose.runOnIdle { vm.removeExtra(extra) { removed = true } }
+                    compose.waitUntil(15000) { removed && !vm.state.value.busy }
+                }
+                compose.waitUntil(15000) {
+                    vm.state.value.upcoming.any {
+                        it.id == "consistency-6-2" && it.endTime == "15:30"
+                    }
+                }
                 val movedDate = sunday.plusDays(1)
                 app.contentResolver.update(
                     ContentUris.withAppendedId(
@@ -153,6 +198,12 @@ class ScheduleConsistencyUiTest {
             } finally {
                 compose.runOnIdle { store.clear() }
                 runBlocking {
+                    dao.allExtraWork(profile.id)
+                        .first()
+                        .filter { it.date == monday.plusDays(6).toString() }
+                        .forEach {
+                            dao.removeExtra(it.id, profile.id)
+                        }
                     app.database.openHelper.writableDatabase.execSQL(
                         "DELETE FROM weeks WHERE id = ?",
                         arrayOf(weekId),

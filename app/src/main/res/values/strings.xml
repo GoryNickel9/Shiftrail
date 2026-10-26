@@ -167,7 +167,8 @@
     <string name="extra_work">Lavoro extra</string>
     <string name="start_time">Inizio (HH:MM)</string>
     <string name="end_time">Fine (HH:MM)</string>
-    <string name="extra_help">Se la fine precede l’inizio, il lavoro termina il giorno successivo. Le ore extra restano nel conteggio di Shiftrail.</string>
+    <string name="extra_help">Se la fine precede l’inizio, il lavoro termina il giorno successivo. Gli extra aggiornano l’orario in home e nel calendario, anche per date passate.</string>
+    <string name="extra_calendar_conflict">Il turno è stato modificato o spostato nel calendario. Controlla l’orario di base in Ore prima di modificare gli extra.</string>
     <string name="extra_invalid">Inserisci una data valida e due orari diversi nel formato HH:MM.</string>
     <string name="extra_duplicate">Questo lavoro extra è già registrato.</string>
     <string name="extra_delete_title">Eliminare il lavoro extra?</string>

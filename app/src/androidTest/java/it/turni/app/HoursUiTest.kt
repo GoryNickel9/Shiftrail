@@ -4,9 +4,11 @@ import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import it.turni.app.calendar.CalendarMutation
 import it.turni.app.data.*
+import it.turni.app.ui.AppViewModel
 import it.turni.core.*
 import java.io.File
 import java.time.YearMonth
@@ -24,6 +26,7 @@ class HoursUiTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val app = context.applicationContext as TurniApplication
         val dao = app.database.dao()
+        val oldSettings = runBlocking { dao.settings() } ?: SettingsEntity()
         val month = YearMonth.now()
         val oldProfile = runBlocking { dao.profile() }
         compose.waitUntil(15000) {
@@ -129,6 +132,16 @@ class HoursUiTest {
                     shift(ids[3], month.atDay(6).toString(), null, null, primary.id, 2, "X")
                 )
             }
+            var calendarSelected = false
+            compose.runOnIdle {
+                ViewModelProvider(compose.activity)[AppViewModel::class.java].saveCalendar(
+                    primary.id,
+                    false,
+                ) {
+                    calendarSelected = true
+                }
+            }
+            compose.waitUntil(15000) { calendarSelected }
             waitForHome(profile.name)
             compose.onNodeWithText("Ore").performClick()
             waitForTotal("8 h 00 min")
@@ -223,6 +236,7 @@ class HoursUiTest {
             primary.close()
             secondary.close()
             runBlocking {
+                dao.saveSettings(oldSettings)
                 ids.forEach { dao.removeShift(it) }
                 dao.findExtra(employee, month.atDay(8).toString(), "22:30", "01:00")?.let {
                     dao.removeExtra(it.id, employee)

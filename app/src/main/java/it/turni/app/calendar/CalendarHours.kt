@@ -1,5 +1,6 @@
 package it.turni.app.calendar
 
+import it.turni.app.data.ExtraWorkEntity
 import it.turni.app.data.ShiftEntity
 import it.turni.core.*
 import java.time.Instant
@@ -19,6 +20,7 @@ fun calendarSchedule(
     shifts: List<ShiftEntity>,
     events: Map<Long, ProviderEvent>,
     zone: ZoneId,
+    extras: List<ExtraWorkEntity> = emptyList(),
 ): CalendarSchedule {
     val summaries = mutableListOf<ShiftEntity>()
     val periods = mutableListOf<WorkPeriod>()
@@ -63,14 +65,25 @@ fun calendarSchedule(
                 type = CellType.WORK_SHIFT.name,
                 code = null,
             )
+        // An expanded event is a display envelope; its extra hours are counted separately.
+        val expanded = extraHoursCell(shift, extras)
+        val matchesExtras =
+            extras.any { it.date == shift.date } &&
+                expanded.date.atTime(expanded.start) == start &&
+                expanded.endDate.atTime(expanded.end) == end
+        if (matchesExtras && shift.type != CellType.WORK_SHIFT.name) continue
+        val periodStart =
+            if (matchesExtras) baseCell(shift).let { it.date.atTime(it.start) } else start
+        val periodEnd =
+            if (matchesExtras) baseCell(shift).let { it.endDate.atTime(it.end) } else end
         periods +=
             WorkPeriod(
                 shift.id,
-                start.toLocalDate(),
-                start.toLocalTime(),
-                end.toLocalTime(),
+                periodStart.toLocalDate(),
+                periodStart.toLocalTime(),
+                periodEnd.toLocalTime(),
                 WorkSource.SCHEDULE,
-                end.toLocalDate(),
+                periodEnd.toLocalDate(),
             )
     }
     return CalendarSchedule(summaries, periods)

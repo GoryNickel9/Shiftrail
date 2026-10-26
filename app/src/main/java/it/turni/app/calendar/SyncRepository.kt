@@ -6,6 +6,7 @@ import it.turni.core.*
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -21,6 +22,161 @@ data class PreparedSync(
 
 class SyncRepository(private val db: TurniDatabase, private val calendar: CalendarRepository) {
     private val mutex = Mutex()
+
+    suspend fun saveExtra(
+        extra: ExtraWorkEntity,
+        previous: ExtraWorkEntity?,
+        calendarId: Long?,
+        options: EventOptions,
+        zone: ZoneId,
+    ) = changeExtra(extra.employeeId, extra, previous, calendarId, options, zone)
+
+    suspend fun removeExtra(
+        extra: ExtraWorkEntity,
+        options: EventOptions,
+        zone: ZoneId,
+    ) = changeExtra(extra.employeeId, null, extra, null, options, zone)
+
+    private suspend fun changeExtra(
+        employee: String,
+        extra: ExtraWorkEntity?,
+        previous: ExtraWorkEntity?,
+        calendarId: Long?,
+        options: EventOptions,
+        zone: ZoneId,
+    ) = mutex.withLock {
+        require(previous == null || previous.employeeId == employee)
+        val before = db.dao().allExtraWork(employee).first()
+        require(previous == null || before.any { it == previous }) { "EXTRA_CHANGED" }
+        extra?.let {
+            it.period()
+            require(previous == null || it.id == previous.id)
+            require(previous != null || before.none { existing -> existing.id == it.id })
+            val duplicate = db.dao().findExtra(employee, it.date, it.startTime, it.endTime)
+            require(duplicate == null || duplicate.id == it.id) { "EXTRA_DUPLICATE" }
+        }
+        val after = before.filter { it.id != previous?.id } + listOfNotNull(extra)
+        val shifts = db.dao().allRecordedShifts(employee).first()
+        data class Pending(val shift: ShiftEntity, val event: CalendarEvent?, val isNew: Boolean)
+        val pending = mutableListOf<Pending>()
+        for (day in listOfNotNull(previous?.date, extra?.date).distinct()) {
+            val date = LocalDate.parse(day)
+            val old =
+                shifts
+                    .filter { it.date == day }
+                    .maxWithOrNull(compareBy<ShiftEntity> { it.updatedAt }.thenBy { it.id })
+            val remaining = after.filter { it.date == day }
+            if (old == null && remaining.isEmpty()) continue
+            val destination =
+                old?.calendarId ?: requireNotNull(calendarId) { "CALENDAR_UNAVAILABLE" }
+            val now = System.currentTimeMillis()
+            val week = db.dao().weekFor(employee, date.with(java.time.DayOfWeek.MONDAY).toString())
+            var base =
+                old
+                    ?: ShiftEntity(
+                        sha256("$employee|$day|$destination"),
+                        week?.id ?: sha256("$employee|${date.with(java.time.DayOfWeek.MONDAY)}"),
+                        employee,
+                        day,
+                        null,
+                        null,
+                        false,
+                        null,
+                        CellType.EMPTY.name,
+                        1.0,
+                        -1,
+                        destination,
+                        "",
+                        now,
+                        now,
+                    )
+            if (old != null) {
+                val marker = eventMarker(employee, date, destination)
+                val provider =
+                    calendar.event(old.calendarEventId)
+                        ?: calendar.findMarker(destination, marker)?.let { calendar.event(it) }
+                if (provider != null) {
+                    // Never overwrite an unrelated event, or discard an external calendar edit.
+                    val actual =
+                        calendarSchedule(
+                            listOf(old.copy(calendarEventId = provider.id)),
+                            mapOf(provider.id to provider),
+                            zone,
+                        )
+                    val expected =
+                        EventFactory.create(extraHoursCell(old, before), emptyList(), options, zone)
+                    val unexpanded = EventFactory.create(baseCell(old), emptyList(), options, zone)
+                    val target =
+                        EventFactory.create(extraHoursCell(old, after), emptyList(), options, zone)
+                    fun matches(event: CalendarEvent?) =
+                        event != null &&
+                            event.startMillis == provider.start &&
+                            event.endMillis == provider.end &&
+                            event.allDay == provider.allDay
+                    if (before.any { it.date == day }) {
+                        require(matches(expected) || matches(unexpanded) || matches(target)) {
+                            "CALENDAR_EXTRA_CONFLICT"
+                        }
+                    } else if (!matches(target)) {
+                        val live = actual.shifts.single()
+                        require(live.date == day) { "CALENDAR_EXTRA_CONFLICT" }
+                        base = live
+                    }
+                    base = base.copy(calendarEventId = provider.id)
+                }
+            }
+            val event = EventFactory.create(extraHoursCell(base, after), emptyList(), options, zone)
+            pending += Pending(base, event, old == null)
+        }
+        val written = mutableMapOf<String, Long?>()
+        for ((destination, changes) in pending.groupBy { it.shift.calendarId }) {
+            val ids =
+                calendar.apply(
+                    destination,
+                    changes.map {
+                        val date = LocalDate.parse(it.shift.date)
+                        CalendarMutation(
+                            date,
+                            it.event,
+                            it.shift.calendarEventId.takeIf { id -> id >= 0 },
+                            eventMarker(employee, date, destination),
+                        )
+                    },
+                )
+            changes.forEach { written[it.shift.id] = ids[LocalDate.parse(it.shift.date)] }
+        }
+        db.withTransaction {
+            previous?.let { db.dao().removeExtra(it.id, employee) }
+            extra?.let { db.dao().saveExtra(it) }
+            for ((shift, event, isNew) in pending) {
+                if (event == null && shift.type == CellType.EMPTY.name) {
+                    db.dao().removeShift(shift.id)
+                    continue
+                }
+                if (isNew) {
+                    val monday = LocalDate.parse(shift.date).with(java.time.DayOfWeek.MONDAY)
+                    if (db.dao().weekFor(employee, monday.toString()) == null)
+                        db.dao()
+                            .saveWeek(
+                                WeekEntity(
+                                    shift.weekId,
+                                    employee,
+                                    monday.toString(),
+                                    shift.createdAt,
+                                    "",
+                                )
+                            )
+                }
+                db.dao()
+                    .saveShift(
+                        shift.copy(
+                            calendarEventId = written[shift.id] ?: shift.calendarEventId,
+                            updatedAt = maxOf(System.currentTimeMillis(), shift.updatedAt + 1),
+                        )
+                    )
+            }
+        }
+    }
 
     suspend fun updateHours(
         employee: String,
@@ -54,8 +210,19 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
         val date =
             provider?.let { java.time.Instant.ofEpochMilli(it.start).atZone(zone).toLocalDate() }
                 ?: originalDate
-        val cell = ShiftParser.parse("$start-$end", date).copy(reviewed = true)
-        val event = requireNotNull(EventFactory.create(cell, emptyList(), options, zone))
+        val extras = db.dao().allExtraWork(employee).first()
+        val expanded =
+            extraHoursCell(
+                old.copy(
+                    date = date.toString(),
+                    startTime = start.toString(),
+                    endTime = end.toString(),
+                    type = CellType.WORK_SHIFT.name,
+                    code = null,
+                ),
+                extras,
+            )
+        val event = requireNotNull(EventFactory.create(expanded, emptyList(), options, zone))
         val ids =
             calendar.apply(old.calendarId, listOf(CalendarMutation(date, event, eventId, marker)))
         // Keep the imported week, source hash and shift ID when editing a single day.
@@ -81,10 +248,33 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
         hash: String,
         cells: List<ShiftCell>,
         events: List<CalendarEvent>,
+        options: EventOptions? = null,
+        zone: ZoneId = ZoneId.systemDefault(),
     ): PreparedSync {
         val saved =
             db.dao()
                 .previous(employee, monday.toString(), monday.plusDays(6).toString(), calendarId)
+        val extras = db.dao().allExtraWork(employee).first()
+        val expandedEvents = cells.mapNotNull { cell ->
+            val event = events.firstOrNull { it.date == cell.date }
+            if (extras.none { it.date == cell.date.toString() }) event
+            else
+                EventFactory.create(
+                    extraHoursCell(cell, extras),
+                    emptyList(),
+                    options
+                        ?: if (event == null) EventOptions()
+                        else
+                            EventOptions(
+                                location = event.location,
+                                description = event.description,
+                                reminderMinutes = event.reminderMinutes,
+                                color = event.color,
+                                restColor = event.color,
+                            ),
+                    if (event == null || event.allDay) zone else ZoneId.of(event.timezone),
+                )
+        }
         val existing = mutableSetOf<Long>()
         val recovered = mutableListOf<SavedEvent>()
         for (cell in cells) {
@@ -97,7 +287,7 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
             if (id != null) {
                 existing += id
                 val provider = calendar.event(id)
-                val incoming = events.firstOrNull { it.date == cell.date }
+                val incoming = expandedEvents.firstOrNull { it.date == cell.date }
                 // If Room was not committed, force an update of the recovered event to canonical
                 // values.
                 val unchanged =
@@ -119,7 +309,7 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
                     )
             } else if (old != null) recovered += old.saved()
         }
-        val changes = SyncPlanner.plan(events, recovered, calendarId, existing)
+        val changes = SyncPlanner.plan(expandedEvents, recovered, calendarId, existing)
         return PreparedSync(employee, monday, calendarId, hash, cells, changes, saved)
     }
 
