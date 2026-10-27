@@ -1,5 +1,15 @@
 # Verifiche e riproduzione
 
+## Preparazione della versione 0.5.0 — 28 ottobre 2026
+
+La versione stabile 0.5.0 usa versionCode 16, superiore alla 0.4.1 pubblicata con build 15. Build debug e release, compilazione dei test, 79 test JVM distinti, lint e controllo ktfmt sono passati (`artifacts/release-0.5.0-checks.log`). I test app sono eseguiti sia in debug sia in release; Gradle ha riutilizzato i risultati core invariati. Lint riporta zero errori e 34 avvisi.
+
+L’APK release è non debuggabile, mantiene package `it.turni.app`, minSdk 26 e targetSdk 35. `apksigner` conferma l’impronta pubblica conservata in `signing-certificate.sha256`. `adb install -r` ha aggiornato l’installazione di sviluppo 0.4.1 presente sull’emulatore senza disinstallarla. La conservazione dei dati e le migrazioni dalle versioni di schema 1 e 2 sono verificate dalle fixture Room e dai test di integrazione, non da una nuova installazione del vecchio APK pubblico.
+
+Sono passati insieme 24 test Android sull’APK release, su API 35, in 47,448 secondi (`artifacts/release-0.5.0-android-verified.txt`). Il gruppo copre ore notturne sui dati migrati, extra, sfondo, notifiche e allarmi, scelta beta, uscita offline, identità dell’APK, aggiornamento obbligatorio e anteprime native dell’icona. I test UI di beta e aggiornamento obbligatorio usano ora `MainActivity`: il precedente host `ComponentActivity` era presente soltanto nei build debug e impediva l’avvio di tre casi sull’APK release. Gli assert sono rimasti invariati; dopo l’adattamento tutti i casi passano. Compilazione dei test, lint e ktfmt sono passati nuovamente (`artifacts/release-0.5.0-test-host-checks.log`).
+
+Le verifiche usano dati sintetici. Non sono stati eseguiti benchmark o test su smartphone fisici. La release stabile include l’adesione alle beta future; non richiede né pubblica una prerelease.
+
 ## Icona Shiftrail e beta facoltativa — 28 ottobre 2026, senza release
 
 Sono passati 79 test JVM distinti (69 core e 10 app, questi ultimi in debug e release), build debug, compilazione dei test Android, lint e ktfmt. È stata verificata anche una build pulita del modulo app dopo lo spostamento delle risorse dell’icona: `artifacts/branding-beta-clean-build.log`. Il controllo finale di lint e formattazione è `artifacts/branding-beta-completed-checks.log`: zero errori e 34 avvisi. Lo script di pubblicazione ha superato il parsing PowerShell; la CLI installata espone `--prerelease` e `--latest=false`. Lo script non è stato eseguito per pubblicare.

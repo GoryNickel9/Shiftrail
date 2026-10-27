@@ -18,7 +18,7 @@ Il permesso INTERNET serve a leggere manifest e APK pubblici da GitHub. Non veng
 
 **Impostazioni → Aggiornamenti → Partecipa alla beta** salva subito un’adesione locale, disattivata per impostazione predefinita. Non richiede un account e non registra utenti su un server. Le beta restano facoltative e compaiono con **Scarica beta** nella stessa sezione; non attivano la schermata di aggiornamento obbligatorio. La policy delle versioni stabili resta invariata.
 
-Lo switch sarà disponibile agli utenti dopo l’installazione di un APK che include questo codice. Per proporre la scelta agli utenti delle vecchie versioni occorre distribuire una stabile con il nuovo sistema; una prerelease GitHub, da sola, non aggiunge lo switch alle installazioni esistenti. Le prerelease restano pubbliche su GitHub: l’adesione controlla le proposte nell’app, non l’accesso al file tramite un link diretto.
+Lo switch è disponibile dalla versione stabile 0.5.0. Gli utenti delle vecchie versioni devono prima aggiornare l’app: una prerelease GitHub, da sola, non aggiunge lo switch alle installazioni esistenti. Le prerelease restano pubbliche su GitHub: l’adesione controlla le proposte nell’app, non l’accesso al file tramite un link diretto.
 
 Il controllo stabile continua a usare `releases/latest/download/update.json`, che GitHub riserva alle release pubbliche stabili. Soltanto per gli iscritti l’app legge anche l’API pubblica delle 100 release più recenti, entro 2 MiB. Seleziona la prerelease pubblicata più di recente con tag `vX.Y.Z-beta.N` (`N` positivo), legge il relativo `update.json` e richiede che versione e tag coincidano. Un errore del canale beta non elimina una versione stabile già verificata. I controlli beta automatici sono limitati a uno ogni 15 minuti; il pulsante manuale permette di riprovare subito. La rete e i limiti dell’API GitHub restano necessari per scoprire nuove beta.
 
@@ -28,11 +28,11 @@ Il manifest resta `schemaVersion: 1`. Il campo `versionName` ammette anche `X.Y.
 
 Per preparare una beta futura:
 
-1. Impostare `versionName`, per esempio `0.5.0-beta.1`, e un `versionCode` maggiore di tutte le build distribuite.
-2. Aggiungere le note `docs/releases/0.5.0-beta.1.md`, verificare, fare commit e push.
+1. Impostare `versionName`, per esempio `0.6.0-beta.1`, e un `versionCode` maggiore di tutte le build distribuite.
+2. Aggiungere le note `docs/releases/0.6.0-beta.1.md`, verificare, fare commit e push.
 3. Eseguire `./scripts/publish-release.ps1 -Beta` solo quando la pubblicazione è autorizzata.
 
-Lo script richiede coerenza tra `-Beta` e il nome versione, controlla che il numero di build superi quelli degli ultimi manifest pubblicati nei due canali, pubblica con `--prerelease --latest=false` e mantiene le versioni già pubblicate immutabili. La successiva stabile usa un numero di build ancora maggiore. In questa modifica non viene pubblicata alcuna release o beta; il codice mantiene versione 0.4.1 e versionCode 15.
+Lo script richiede coerenza tra `-Beta` e il nome versione, controlla che il numero di build superi quelli degli ultimi manifest pubblicati nei due canali, pubblica con `--prerelease --latest=false` e mantiene le versioni già pubblicate immutabili. La successiva stabile usa un numero di build ancora maggiore. La 0.5.0 usa versionCode 16 e viene distribuita come stabile; le beta future richiedono una pubblicazione separata.
 
 Riferimenti: [GitHub Releases API](https://docs.github.com/en/rest/releases/releases) e [badge Android](https://developer.android.com/develop/ui/compose/notifications/badges).
 

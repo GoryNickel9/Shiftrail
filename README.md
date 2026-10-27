@@ -6,6 +6,8 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 ## Download e release
 
+**Shiftrail 0.5.0** include la nuova icona, ore notturne anche sui dati già salvati, sfondo personale, notifiche configurabili e adesione facoltativa alle beta future. Vedi le [note della versione](docs/releases/0.5.0.md).
+
 [Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
 
 Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i dati. Dalla versione 0.4.0 Shiftrail controlla le nuove release a ogni ritorno nell’app: una versione successiva compatibile deve essere installata per continuare. La richiesta viene conservata anche dopo la chiusura. Il controllo manuale resta in **Impostazioni → Aggiornamenti**. Protocollo, firma e pubblicazione sono descritti in [aggiornamenti](docs/UPDATES.md).

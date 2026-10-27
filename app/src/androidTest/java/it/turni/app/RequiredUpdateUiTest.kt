@@ -3,12 +3,13 @@ package it.turni.app
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.view.KeyEvent
+import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
@@ -24,27 +25,31 @@ import org.junit.Rule
 import org.junit.Test
 
 class RequiredUpdateUiTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
     fun aDownloadedBetaDoesNotReplaceTheRequiredStableApk() {
         val stable = ReleaseUpdate(BuildConfig.VERSION_CODE + 1, "99.0.0", "a".repeat(64), 26)
         val beta = stable.copy(versionCode = stable.versionCode + 1, versionName = "99.1.0-beta.1")
         var requestedStableDownload = false
-        compose.setContent {
-            ShiftrailTheme {
-                RequiredUpdateScreen(
-                    UpdateState(
-                        release = stable,
-                        ready = true,
-                        betaEnabled = true,
-                        betaRelease = beta,
-                        downloadedRelease = beta,
-                    ),
-                    onDownload = { requestedStableDownload = true },
-                    onInstall = { throw AssertionError("Beta must not satisfy a stable download") },
-                    onRetry = {},
-                )
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                ShiftrailTheme {
+                    RequiredUpdateScreen(
+                        UpdateState(
+                            release = stable,
+                            ready = true,
+                            betaEnabled = true,
+                            betaRelease = beta,
+                            downloadedRelease = beta,
+                        ),
+                        onDownload = { requestedStableDownload = true },
+                        onInstall = {
+                            throw AssertionError("Beta must not satisfy a stable download")
+                        },
+                        onRetry = {},
+                    )
+                }
             }
         }
         compose.onNodeWithText("Installa").assertDoesNotExist()
@@ -65,19 +70,21 @@ class RequiredUpdateUiTest {
         val vm = AppViewModel(app)
         val store = ViewModelStore().apply { put("required-update", vm) }
         try {
-            compose.setContent {
-                val density = LocalDensity.current
-                val configuration =
-                    Configuration(LocalConfiguration.current).apply {
-                        uiMode =
-                            (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
-                                Configuration.UI_MODE_NIGHT_YES
+            compose.runOnUiThread {
+                compose.activity.setContent {
+                    val density = LocalDensity.current
+                    val configuration =
+                        Configuration(LocalConfiguration.current).apply {
+                            uiMode =
+                                (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+                                    Configuration.UI_MODE_NIGHT_YES
+                        }
+                    CompositionLocalProvider(
+                        LocalDensity provides Density(density.density, 1.6f),
+                        LocalConfiguration provides configuration,
+                    ) {
+                        TurniApp(vm)
                     }
-                CompositionLocalProvider(
-                    LocalDensity provides Density(density.density, 1.6f),
-                    LocalConfiguration provides configuration,
-                ) {
-                    TurniApp(vm)
                 }
             }
             compose.waitUntil(15000) { vm.state.value.loaded && !vm.state.value.busy }

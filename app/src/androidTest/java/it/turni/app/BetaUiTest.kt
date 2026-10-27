@@ -1,9 +1,10 @@
 package it.turni.app
 
 import android.graphics.Bitmap
+import androidx.activity.compose.setContent
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
 import it.turni.app.ui.AppViewModel
@@ -15,7 +16,7 @@ import org.junit.Rule
 import org.junit.Test
 
 class BetaUiTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
     fun optionalBetaAllowsNavigationAndCanBeLeftWithoutDownloading() {
@@ -33,7 +34,7 @@ class BetaUiTest {
         val vm = AppViewModel(app)
         val store = ViewModelStore().apply { put("beta", vm) }
         try {
-            compose.setContent { TurniApp(vm) }
+            compose.runOnUiThread { compose.activity.setContent { TurniApp(vm) } }
             compose.waitUntil(15000) { vm.state.value.loaded && !vm.state.value.busy }
             compose.onNodeWithTag("required_update").assertDoesNotExist()
             compose.onNodeWithText("Ore").assertIsDisplayed()
