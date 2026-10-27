@@ -2,6 +2,10 @@
 
 ## Preparazione della versione 0.5.0 — 28 ottobre 2026
 
+La [release stabile v0.5.0](https://github.com/GoryNickel9/app-turni/releases/tag/v0.5.0) è pubblicata sul commit `506847a185a2194425e386077bd7b9e5bad5c9ed`, dopo il successo della [CI](https://github.com/GoryNickel9/app-turni/actions/runs/40603144912). Comprende APK, `update.json` e `SHA256SUMS.txt`; il tag remoto punta allo stesso commit e la release è `latest`, pubblica e non prerelease. L’APK finale è stato ricostruito dopo il commit per aggiornare i metadati VCS, senza cambiare il codice verificato (`artifacts/release-0.5.0-final-apk.log`). SHA-256: `f61d20a28e2e9b05e7c8e12c9c63454846a0ec376d1b8e749c7e3f2eee015085`.
+
+Il manifest pubblico letto tramite l’URL `latest` riporta versione 0.5.0, build 16 e il checksum dell’APK locale. Dopo la pubblicazione è passato anche `PublishedUpdateTest`, abilitato con `verifyPublishedUpdate=true`: l’updater Android scarica l’APK reale dalla release, verifica checksum, versione, package, SDK e firma e prepara l’intent di installazione. Log: `artifacts/release-0.5.0-online.txt`, `OK (1 test)`, 10,544 secondi. In totale sono 25 test Android distinti passati, contando i 24 controlli precedenti e questa verifica online.
+
 La versione stabile 0.5.0 usa versionCode 16, superiore alla 0.4.1 pubblicata con build 15. Build debug e release, compilazione dei test, 79 test JVM distinti, lint e controllo ktfmt sono passati (`artifacts/release-0.5.0-checks.log`). I test app sono eseguiti sia in debug sia in release; Gradle ha riutilizzato i risultati core invariati. Lint riporta zero errori e 34 avvisi.
 
 L’APK release è non debuggabile, mantiene package `it.turni.app`, minSdk 26 e targetSdk 35. `apksigner` conferma l’impronta pubblica conservata in `signing-certificate.sha256`. `adb install -r` ha aggiornato l’installazione di sviluppo 0.4.1 presente sull’emulatore senza disinstallarla. La conservazione dei dati e le migrazioni dalle versioni di schema 1 e 2 sono verificate dalle fixture Room e dai test di integrazione, non da una nuova installazione del vecchio APK pubblico.
