@@ -32,6 +32,8 @@ In **Impostazioni → Sfondo dell’app** puoi scegliere una foto personale o ri
 
 In **Impostazioni → Notifiche dell’app** puoi abilitare un avviso prima del lavoro, impostare ore e minuti di anticipo e scegliere suono e vibrazione. Premi **Salva** per applicare. Le notifiche sono inizialmente disattivate e distinte dai promemoria del calendario. Android può richiedere il permesso per notifiche e avvisi precisi; senza quest’ultimo il promemoria può arrivare in ritardo. Dettagli e limiti in [notifiche e sfondo](docs/PERSONALIZATION_NOTIFICATIONS.md).
 
+Il nome resta **Shiftrail**. La nuova icona adattiva usa una S a forma di percorso e include una variante monocromatica per la barra di stato. I launcher compatibili mostrano il pallino quando è presente una notifica attiva. In **Impostazioni → Aggiornamenti** puoi aderire alla beta: le prerelease sono facoltative e vengono proposte solo a chi aderisce al canale. Uscire conserva i dati e torna a cercare soltanto versioni stabili, senza downgrade automatici. Vedi [branding](docs/BRANDING.md) e [canali di aggiornamento](docs/UPDATES.md).
+
 ## Build
 
 Richiede JDK 17 o 21, Android SDK 35 e build-tools 35.0.0. Apri il repository in Android Studio oppure configura `ANDROID_HOME` / `local.properties` con `sdk.dir`.

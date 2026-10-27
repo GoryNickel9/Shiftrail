@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 
 data class UpdateState(
@@ -27,6 +28,9 @@ data class UpdateState(
     val downloading: Boolean = false,
     val ready: Boolean = false,
     val message: String? = null,
+    val betaEnabled: Boolean = false,
+    val betaRelease: ReleaseUpdate? = null,
+    val downloadedRelease: ReleaseUpdate? = null,
 )
 
 /** Public GitHub releases only. No account, calendar or OCR data is sent. */
@@ -49,7 +53,8 @@ class UpdateRepository(private val context: Context) {
             } catch (_: Exception) {
                 null
             }
-        if (release?.isCompatibleUpdate(installedVersion, sdk) == true) return release
+        if (release?.isBeta == false && release.isCompatibleUpdate(installedVersion, sdk))
+            return release
         preferences.edit().remove("required_release").apply()
         return null
     }
@@ -57,7 +62,10 @@ class UpdateRepository(private val context: Context) {
     fun rememberUpdate(release: ReleaseUpdate) {
         if (!release.isCompatibleUpdate(BuildConfig.VERSION_CODE.toLong(), Build.VERSION.SDK_INT))
             return
-        if ((requiredUpdate()?.versionCode ?: 0) > release.versionCode) return
+        val key = if (release.isBeta) "beta_release" else "required_release"
+        if (release.isBeta && !betaEnabled()) return
+        val previous = if (release.isBeta) betaUpdate() else requiredUpdate()
+        if ((previous?.versionCode ?: 0) > release.versionCode) return
         val manifest =
             JSONObject()
                 .put("schemaVersion", 1)
@@ -65,30 +73,85 @@ class UpdateRepository(private val context: Context) {
                 .put("versionName", release.versionName)
                 .put("sha256", release.sha256)
                 .put("minSdk", release.minSdk)
-        preferences.edit().putString("required_release", manifest.toString()).apply()
+        preferences.edit().putString(key, manifest.toString()).apply()
+    }
+
+    fun betaEnabled() = preferences.getBoolean("beta_enabled", false)
+
+    fun setBetaEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean("beta_enabled", enabled).apply()
+        if (!enabled) preferences.edit().remove("beta_release").remove("beta_check_at").apply()
+    }
+
+    fun betaUpdate(): ReleaseUpdate? {
+        if (!betaEnabled()) return null
+        val release =
+            preferences.getString("beta_release", null)?.let {
+                runCatching { parseManifest(it) }.getOrNull()
+            }
+        if (
+            release?.isBeta == true &&
+                release.isCompatibleUpdate(BuildConfig.VERSION_CODE.toLong(), Build.VERSION.SDK_INT)
+        )
+            return release
+        preferences.edit().remove("beta_release").apply()
+        return null
     }
 
     suspend fun check(): ReleaseUpdate? =
         withContext(Dispatchers.IO) {
-            val connection = connect("$REPOSITORY/releases/latest/download/update.json")
-            try {
-                if (connection.responseCode == 404) return@withContext null
-                require(connection.responseCode == 200) { "UPDATE_NETWORK" }
-                val buffer = ByteArray(64 * 1024 + 1)
-                var count = 0
-                connection.inputStream.use { input ->
-                    while (count < buffer.size) {
-                        val read = input.read(buffer, count, buffer.size - count)
-                        if (read < 0) break
-                        count += read
-                    }
-                }
-                require(count < buffer.size) { "UPDATE_MANIFEST" }
-                parseManifest(String(buffer, 0, count, Charsets.UTF_8)).also { rememberUpdate(it) }
-            } finally {
-                connection.disconnect()
+            readManifest("$REPOSITORY/releases/latest/download/update.json")?.also {
+                require(!it.isBeta) { "UPDATE_MANIFEST" }
+                rememberUpdate(it)
             }
         }
+
+    suspend fun checkBeta(force: Boolean = false): ReleaseUpdate? =
+        withContext(Dispatchers.IO) {
+            if (!betaEnabled()) return@withContext null
+            val now = System.currentTimeMillis()
+            val lastCheck = preferences.getLong("beta_check_at", 0)
+            if (!force && lastCheck > 0 && now - lastCheck in 0 until 15 * 60_000L)
+                return@withContext betaUpdate()
+            preferences.edit().putLong("beta_check_at", now).apply()
+            val listing =
+                readText(
+                    "https://api.github.com/repos/GoryNickel9/app-turni/releases?per_page=100",
+                    MAX_LIST_BYTES,
+                ) ?: return@withContext null
+            val tag = betaTags(listing).firstOrNull() ?: return@withContext null
+            val release =
+                readManifest("$REPOSITORY/releases/download/$tag/update.json")
+                    ?: return@withContext null
+            require(release.isBeta && release.tag == tag) { "UPDATE_MANIFEST" }
+            rememberUpdate(release)
+            release
+        }
+
+    private suspend fun readManifest(address: String): ReleaseUpdate? =
+        readText(address, 64 * 1024)?.let { parseManifest(it) }
+
+    private suspend fun readText(address: String, maximum: Int): String? {
+        val connection = connect(address)
+        try {
+            if (connection.responseCode == 404) return null
+            require(connection.responseCode == 200) { "UPDATE_NETWORK" }
+            val buffer = ByteArray(maximum + 1)
+            var count = 0
+            connection.inputStream.use { input ->
+                while (count < buffer.size) {
+                    currentCoroutineContext().ensureActive()
+                    val read = input.read(buffer, count, buffer.size - count)
+                    if (read < 0) break
+                    count += read
+                }
+            }
+            require(count < buffer.size) { "UPDATE_MANIFEST" }
+            return String(buffer, 0, count, Charsets.UTF_8)
+        } finally {
+            connection.disconnect()
+        }
+    }
 
     suspend fun download(release: ReleaseUpdate): File =
         withContext(Dispatchers.IO) {
@@ -138,6 +201,7 @@ class UpdateRepository(private val context: Context) {
         val installed = context.packageManager.getPackageInfo(context.packageName, flags)
         require(
             incoming.packageName == context.packageName &&
+                incoming.versionName == release.versionName &&
                 versionCode(incoming) == release.versionCode.toLong() &&
                 incoming.applicationInfo?.minSdkVersion == release.minSdk
         ) {
@@ -202,12 +266,39 @@ class UpdateRepository(private val context: Context) {
     companion object {
         const val REPOSITORY = "https://github.com/GoryNickel9/app-turni"
         private const val MAX_APK_BYTES = 200 * 1024 * 1024L
+        private const val MAX_LIST_BYTES = 2 * 1024 * 1024
         private val DOWNLOAD_HOSTS =
             setOf(
                 "github.com",
+                "api.github.com",
                 "release-assets.githubusercontent.com",
                 "objects.githubusercontent.com",
             )
+
+        /** Public prereleases only; version names remain the sole source of download paths. */
+        fun betaTags(text: String): List<String> {
+            val releases = JSONArray(text)
+            return (0 until releases.length())
+                .mapNotNull { index ->
+                    val item = releases.getJSONObject(index)
+                    val tag = item.optString("tag_name")
+                    val published = runCatching {
+                        java.time.Instant.parse(item.optString("published_at"))
+                    }
+                        .getOrNull()
+                    if (
+                        item.optBoolean("draft", true) ||
+                            !item.optBoolean("prerelease") ||
+                            published == null ||
+                            !Regex("v[0-9]+\\.[0-9]+\\.[0-9]+-beta\\.[1-9][0-9]*").matches(tag)
+                    )
+                        null
+                    else tag to published
+                }
+                .sortedByDescending { it.second }
+                .map { it.first }
+                .distinct()
+        }
 
         fun parseManifest(text: String): ReleaseUpdate {
             val json = JSONObject(text)

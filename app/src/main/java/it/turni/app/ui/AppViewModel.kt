@@ -62,7 +62,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val backgrounds = AppBackground(app)
     private val extractor: ScheduleExtractor = LocalScheduleExtractor(images)
     private val mutable =
-        MutableStateFlow(AppState(updater = UpdateState(release = app.updater.requiredUpdate())))
+        MutableStateFlow(
+            AppState(
+                updater =
+                    UpdateState(
+                        release = app.updater.requiredUpdate(),
+                        betaEnabled = app.updater.betaEnabled(),
+                        betaRelease = app.updater.betaUpdate(),
+                    )
+            )
+        )
     val state = mutable.asStateFlow()
     private var hoursJob: Job? = null
     private var hoursMonth = YearMonth.now()
@@ -82,15 +91,33 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val latest = app.updater.check()
                 val release = app.updater.requiredUpdate()
+                // A beta endpoint failure must not discard a successfully checked stable release.
+                var betaFailed = false
+                val beta =
+                    try {
+                        app.updater.checkBeta(force = !automatic)
+                        app.updater.betaUpdate()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        betaFailed = true
+                        app.updater.betaUpdate()
+                    }
                 mutable.update {
                     it.copy(
                         updater =
                             it.updater.copy(
                                 release = release,
+                                betaRelease = beta,
                                 checking = false,
-                                ready = it.updater.ready && it.updater.release == release,
+                                ready =
+                                    it.updater.ready &&
+                                        it.updater.downloadedRelease != null &&
+                                        it.updater.downloadedRelease in listOf(release, beta),
                                 message =
-                                    if (release == null && !automatic)
+                                    if (release == null && betaFailed)
+                                        app.getString(R.string.beta_check_failed)
+                                    else if (release == null && beta == null && !automatic)
                                         app.getString(
                                             when {
                                                 latest == null -> R.string.update_no_release
@@ -122,17 +149,57 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun downloadUpdate() {
+    fun setBetaParticipation(enabled: Boolean) {
+        if (mutable.value.updater.downloading) return
+        updateJob?.cancel()
+        updateJob = null
+        app.updater.setBetaEnabled(enabled)
+        mutable.update {
+            it.copy(
+                updater =
+                    it.updater.copy(
+                        betaEnabled = enabled,
+                        betaRelease = null,
+                        checking = false,
+                        message = null,
+                        ready = false,
+                        downloadedRelease = null,
+                    )
+            )
+        }
+        if (enabled) checkUpdates()
+    }
+
+    fun downloadUpdate() = downloadRelease(mutable.value.updater.release)
+
+    fun downloadBetaUpdate() = downloadRelease(mutable.value.updater.betaRelease)
+
+    private fun downloadRelease(release: ReleaseUpdate?) {
         if (updateJob?.isActive == true) return
-        val release = mutable.value.updater.release ?: return
+        if (release == null || (release.isBeta && !app.updater.betaEnabled())) return
         updateJob = viewModelScope.launch {
             mutable.update {
-                it.copy(updater = it.updater.copy(downloading = true, message = null))
+                it.copy(
+                    updater =
+                        it.updater.copy(
+                            downloading = true,
+                            ready = false,
+                            downloadedRelease = null,
+                            message = null,
+                        )
+                )
             }
             try {
                 app.updater.download(release)
                 mutable.update {
-                    it.copy(updater = it.updater.copy(downloading = false, ready = true))
+                    it.copy(
+                        updater =
+                            it.updater.copy(
+                                downloading = false,
+                                ready = true,
+                                downloadedRelease = release,
+                            )
+                    )
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -152,6 +219,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun installUpdate() {
         try {
+            val updater = mutable.value.updater
+            check(updater.ready && updater.downloadedRelease != null)
+            check(updater.release == null || updater.downloadedRelease == updater.release)
+            check(!updater.downloadedRelease.isBeta || app.updater.betaEnabled())
             app.startActivity(app.updater.installIntent().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (_: Exception) {
             mutable.update {

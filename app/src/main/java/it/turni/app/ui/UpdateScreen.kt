@@ -5,9 +5,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import it.turni.app.BuildConfig
 import it.turni.app.R
@@ -19,6 +22,25 @@ fun UpdateSettings(state: UpdateState, vm: AppViewModel) {
         Text(stringResource(R.string.updates), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(R.string.update_version, BuildConfig.VERSION_NAME))
         Text(stringResource(R.string.update_auto_note), style = MaterialTheme.typography.bodySmall)
+        val betaLabel = stringResource(R.string.beta_join)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(betaLabel, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            Switch(
+                state.betaEnabled,
+                vm::setBetaParticipation,
+                Modifier.testTag("beta_enabled").semantics { contentDescription = betaLabel },
+                enabled = !state.downloading,
+            )
+        }
+        Text(stringResource(R.string.beta_note), style = MaterialTheme.typography.bodySmall)
+        if (BuildConfig.VERSION_NAME.contains("-beta."))
+            Text(
+                stringResource(R.string.beta_installed),
+                style = MaterialTheme.typography.bodySmall,
+            )
         OutlinedButton(
             onClick = { vm.checkUpdates() },
             enabled = !state.checking && !state.downloading,
@@ -31,6 +53,41 @@ fun UpdateSettings(state: UpdateState, vm: AppViewModel) {
             )
         }
         state.message?.let { Text(it, Modifier.testTag("update_message")) }
+        state.betaRelease
+            ?.takeIf { state.betaEnabled }
+            ?.let { beta ->
+                OutlinedCard(Modifier.fillMaxWidth().testTag("beta_available")) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            stringResource(R.string.beta_available, beta.versionName),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            stringResource(R.string.beta_optional),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        if (state.downloading) CircularProgressIndicator()
+                        Button(
+                            onClick =
+                                if (state.ready && state.downloadedRelease == beta)
+                                    vm::installUpdate
+                                else vm::downloadBetaUpdate,
+                            enabled = !state.checking && !state.downloading,
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (state.ready && state.downloadedRelease == beta)
+                                        R.string.update_install
+                                    else R.string.beta_download
+                                )
+                            )
+                        }
+                    }
+                }
+            }
     }
 }
 
@@ -42,6 +99,7 @@ fun RequiredUpdateScreen(
     onRetry: () -> Unit,
 ) {
     val release = state.release ?: return
+    val ready = state.ready && state.downloadedRelease == release
     Column(
         Modifier.fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -62,7 +120,7 @@ fun RequiredUpdateScreen(
             Text(stringResource(R.string.update_required_note))
             Text(
                 stringResource(
-                    if (state.ready) R.string.update_install_note else R.string.update_download_note
+                    if (ready) R.string.update_install_note else R.string.update_download_note
                 )
             )
             if (state.downloading || state.checking) CircularProgressIndicator()
@@ -73,9 +131,9 @@ fun RequiredUpdateScreen(
                 }
         }
         ActionFooter(
-            stringResource(if (state.ready) R.string.update_install else R.string.update_download),
+            stringResource(if (ready) R.string.update_install else R.string.update_download),
             enabled = !state.downloading && !state.checking,
-            action = if (state.ready) onInstall else onDownload,
+            action = if (ready) onInstall else onDownload,
         )
     }
 }

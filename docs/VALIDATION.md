@@ -1,5 +1,21 @@
 # Verifiche e riproduzione
 
+## Icona Shiftrail e beta facoltativa — 28 ottobre 2026, senza release
+
+Sono passati 79 test JVM distinti (69 core e 10 app, questi ultimi in debug e release), build debug, compilazione dei test Android, lint e ktfmt. È stata verificata anche una build pulita del modulo app dopo lo spostamento delle risorse dell’icona: `artifacts/branding-beta-clean-build.log`. Il controllo finale di lint e formattazione è `artifacts/branding-beta-completed-checks.log`: zero errori e 34 avvisi. Lo script di pubblicazione ha superato il parsing PowerShell; la CLI installata espone `--prerelease` e `--latest=false`. Lo script non è stato eseguito per pubblicare.
+
+Sono passati insieme 18 test Android su API 35 in 67,005 secondi, con dati sintetici (`artifacts/branding-beta-completed-android.txt`). Il gruppo include adesione beta inizialmente disattivata, persistenza dell’adesione, uscita offline, separazione delle cache stabile/beta, rifiuto di tag non validi, navigazione consentita con una beta disponibile e protezione dall’installazione dell’APK beta quando serve quello stabile. Restano coperti aggiornamenti obbligatori stabili, identità/firma dell’APK, migrazioni, ore, extra e notifiche reali.
+
+La migrazione da versione 1 verifica ora anche che un turno 19:00–01:00 già presente nel vecchio database produca 60 minuti notturni dopo l’aggiornamento. La funzionalità non richiede una nuova importazione: il riepilogo calcola la fascia 00:00–06:00 dai dati esistenti.
+
+`NotificationPreviewTest` esporta l’icona a 512×512 con il renderer Android e cattura una notifica reale con turno sintetico 22:00–06:00. Il launcher Pixel conferma nell’albero di accessibilità «Shiftrail has 1 notification». Le immagini complete e i dettagli sono in `docs/images/shiftrail-icon.png`, `shiftrail-notification.png`, `shiftrail-notification-detail.png`, `shiftrail-status-unread.png`, `shiftrail-launcher-unread.png` e `shiftrail-icon-unread.png`. Il dettaglio della notifica usa un ritaglio misurato sulla fixture 1080×2400; non ridisegna il pannello. Le immagini sono state ispezionate. Gli altri avvisi dell’emulatore sono stati temporaneamente posticipati per rendere leggibile la cattura, poi ripristinati.
+
+La schermata beta è catturata in `docs/images/shiftrail-beta-settings.png`; la versione 99.0.0-beta.1 è un dato sintetico, non una prerelease pubblicata. Il test UI della beta è passato anche con tema scuro e font al 160% (`artifacts/branding-beta-dark-large.txt`, 5,861 secondi). Come già rilevato, l’etichetta preesistente Impostazioni della navigazione inferiore può andare su più righe con caratteri grandi.
+
+Le prime prove della cattura hanno richiesto di attendere la pubblicazione asincrona dell’avviso e di gestire l’espansione automatica della notifica. L’emulatore non esponeva il nodo del pannello tramite la query di accessibilità usata per il ritaglio: la fixture conserva quindi la schermata completa e ricava il dettaglio dal riquadro osservato. Questi aggiustamenti riguardano il test di cattura, non l’invio della notifica.
+
+Non sono stati eseguiti benchmark, prove su smartphone fisici o il download di una vera beta pubblicata: nessuna nuova release, prerelease o tag è stata creata. Le verifiche della firma usano l’APK realmente installato e lo stesso percorso di validazione condiviso dai due canali. Il numero di versione resta 0.4.1, versionCode 15. Per rendere il canale selezionabile agli utenti attuali servirà un APK con questo codice, come descritto in `UPDATES.md`.
+
 ## Ore notturne, sfondo e notifiche — 27 ottobre 2026, senza release
 
 Build debug e APK dei test, 78 test JVM distinti (68 core e 10 app, questi ultimi eseguiti in debug e release), lint e controllo ktfmt sono passati. Lint riporta zero errori e 30 avvisi, principalmente per dipendenze e target SDK; non è stato aggiornato lo stack Android. Log finale: `artifacts/personalization-final-build.log`. Dopo la correzione delle attese di avvio nei test UI sono passate nuovamente compilazione dei test e formattazione: `artifacts/personalization-test-build.log`.

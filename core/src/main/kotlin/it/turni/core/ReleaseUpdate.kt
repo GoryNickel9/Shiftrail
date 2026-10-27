@@ -8,7 +8,7 @@ data class ReleaseUpdate(
 ) {
     init {
         require(versionCode > 0)
-        require(Regex("[0-9]+\\.[0-9]+\\.[0-9]+").matches(versionName))
+        require(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-beta\\.[1-9][0-9]*)?").matches(versionName))
         require(Regex("[0-9a-f]{64}").matches(sha256))
         require(minSdk >= 26)
     }
@@ -18,6 +18,9 @@ data class ReleaseUpdate(
 
     val apkName
         get() = "Shiftrail-$versionName.apk"
+
+    val isBeta
+        get() = versionName.contains("-beta.")
 
     fun isCompatibleUpdate(installedVersion: Long, sdk: Int) =
         versionCode > installedVersion && minSdk <= sdk

@@ -13,7 +13,10 @@ import androidx.compose.ui.unit.Density
 import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
 import it.turni.app.ui.AppViewModel
+import it.turni.app.ui.RequiredUpdateScreen
+import it.turni.app.ui.ShiftrailTheme
 import it.turni.app.ui.TurniApp
+import it.turni.app.update.UpdateState
 import it.turni.core.ReleaseUpdate
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -22,6 +25,32 @@ import org.junit.Test
 
 class RequiredUpdateUiTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test
+    fun aDownloadedBetaDoesNotReplaceTheRequiredStableApk() {
+        val stable = ReleaseUpdate(BuildConfig.VERSION_CODE + 1, "99.0.0", "a".repeat(64), 26)
+        val beta = stable.copy(versionCode = stable.versionCode + 1, versionName = "99.1.0-beta.1")
+        var requestedStableDownload = false
+        compose.setContent {
+            ShiftrailTheme {
+                RequiredUpdateScreen(
+                    UpdateState(
+                        release = stable,
+                        ready = true,
+                        betaEnabled = true,
+                        betaRelease = beta,
+                        downloadedRelease = beta,
+                    ),
+                    onDownload = { requestedStableDownload = true },
+                    onInstall = { throw AssertionError("Beta must not satisfy a stable download") },
+                    onRetry = {},
+                )
+            }
+        }
+        compose.onNodeWithText("Installa").assertDoesNotExist()
+        compose.onNodeWithText("Scarica aggiornamento").performClick()
+        org.junit.Assert.assertTrue(requestedStableDownload)
+    }
 
     @Test
     fun cachedUpdateBlocksNavigationAndBackEvenWithoutANetworkCheck() {

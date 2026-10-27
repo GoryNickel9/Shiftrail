@@ -14,6 +14,30 @@ Il permesso INTERNET serve a leggere manifest e APK pubblici da GitHub. Non veng
 
 ## Pubblicare una versione
 
+### Canale beta facoltativo
+
+**Impostazioni → Aggiornamenti → Partecipa alla beta** salva subito un’adesione locale, disattivata per impostazione predefinita. Non richiede un account e non registra utenti su un server. Le beta restano facoltative e compaiono con **Scarica beta** nella stessa sezione; non attivano la schermata di aggiornamento obbligatorio. La policy delle versioni stabili resta invariata.
+
+Lo switch sarà disponibile agli utenti dopo l’installazione di un APK che include questo codice. Per proporre la scelta agli utenti delle vecchie versioni occorre distribuire una stabile con il nuovo sistema; una prerelease GitHub, da sola, non aggiunge lo switch alle installazioni esistenti. Le prerelease restano pubbliche su GitHub: l’adesione controlla le proposte nell’app, non l’accesso al file tramite un link diretto.
+
+Il controllo stabile continua a usare `releases/latest/download/update.json`, che GitHub riserva alle release pubbliche stabili. Soltanto per gli iscritti l’app legge anche l’API pubblica delle 100 release più recenti, entro 2 MiB. Seleziona la prerelease pubblicata più di recente con tag `vX.Y.Z-beta.N` (`N` positivo), legge il relativo `update.json` e richiede che versione e tag coincidano. Un errore del canale beta non elimina una versione stabile già verificata. I controlli beta automatici sono limitati a uno ogni 15 minuti; il pulsante manuale permette di riprovare subito. La rete e i limiti dell’API GitHub restano necessari per scoprire nuove beta.
+
+I metadati beta vengono conservati separatamente da quelli stabili. Senza adesione, l’app non interroga il canale beta e non propone prerelease. Disattivare l’adesione cancella la proposta beta e lo stato di installazione pronto, conservando profilo, turni, extra, immagini e preferenze. Se una beta è già installata, rimane in uso finché non esce una stabile con `versionCode` superiore: non si tenta un downgrade, che potrebbe richiedere la disinstallazione. I numeri di build devono quindi crescere globalmente, attraversando entrambi i canali.
+
+Il manifest resta `schemaVersion: 1`. Il campo `versionName` ammette anche `X.Y.Z-beta.N`; i percorsi degli allegati restano derivati da questo nome validato. SHA-256, package, versionCode, versionName, SDK minimo e firma vengono controllati anche per le beta. La UI distingue l’APK pronto per una beta da quello richiesto per una stabile, evitando di proporre l’installazione del file sbagliato dopo un cambio di canale.
+
+Per preparare una beta futura:
+
+1. Impostare `versionName`, per esempio `0.5.0-beta.1`, e un `versionCode` maggiore di tutte le build distribuite.
+2. Aggiungere le note `docs/releases/0.5.0-beta.1.md`, verificare, fare commit e push.
+3. Eseguire `./scripts/publish-release.ps1 -Beta` solo quando la pubblicazione è autorizzata.
+
+Lo script richiede coerenza tra `-Beta` e il nome versione, controlla che il numero di build superi quelli degli ultimi manifest pubblicati nei due canali, pubblica con `--prerelease --latest=false` e mantiene le versioni già pubblicate immutabili. La successiva stabile usa un numero di build ancora maggiore. In questa modifica non viene pubblicata alcuna release o beta; il codice mantiene versione 0.4.1 e versionCode 15.
+
+Riferimenti: [GitHub Releases API](https://docs.github.com/en/rest/releases/releases) e [badge Android](https://developer.android.com/develop/ui/compose/notifications/badges).
+
+### Canale stabile
+
 Modificare `versionCode` e `versionName` in `app/build.gradle.kts`, aggiungere le note in `docs/releases/VERSIONE.md`, verificare i cambiamenti e fare commit/push. Quindi eseguire da PowerShell:
 
 ```powershell

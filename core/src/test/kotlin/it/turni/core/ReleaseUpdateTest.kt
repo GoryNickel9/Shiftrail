@@ -17,6 +17,26 @@ class ReleaseUpdateTest {
     }
 
     @Test
+    fun betaMetadataHasSafePathsAndStableVersionsCanFollowBetaBuilds() {
+        val beta = release.copy(versionCode = 11, versionName = "0.4.0-beta.1")
+        assertTrue(beta.isBeta)
+        assertEquals("v0.4.0-beta.1", beta.tag)
+        assertEquals("Shiftrail-0.4.0-beta.1.apk", beta.apkName)
+        assertFalse(release.isBeta)
+        assertTrue(release.copy(versionCode = 12).isCompatibleUpdate(beta.versionCode.toLong(), 35))
+        for (name in
+            listOf(
+                "0.4.0-beta.0",
+                "0.4.0-beta.01",
+                "0.4.0-beta.1/other",
+                "0.4.0-alpha.1",
+                "0.4.0-beta",
+            )) {
+            assertThrows(IllegalArgumentException::class.java) { release.copy(versionName = name) }
+        }
+    }
+
+    @Test
     fun invalidMetadataCannotConstructDownloadPaths() {
         for (name in listOf("../0.3.0", "0.3.0/other", "0.3.0?x=1", "v0.3.0", "", "0.3")) {
             assertThrows(IllegalArgumentException::class.java) { release.copy(versionName = name) }

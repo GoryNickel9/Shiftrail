@@ -53,6 +53,7 @@ class ShiftNotifications(private val app: TurniApplication) {
                 NotificationManager.IMPORTANCE_DEFAULT,
             )
         channel.description = app.getString(R.string.notification_channel_description)
+        channel.setShowBadge(true)
         channel.enableVibration(settings.notificationVibration)
         channel.setSound(
             if (settings.notificationSound)
@@ -209,6 +210,9 @@ class ShiftNotifications(private val app: TurniApplication) {
         val notification =
             NotificationCompat.Builder(app, channelId(settings))
                 .setSmallIcon(R.drawable.ic_notification)
+                .setColor(ContextCompat.getColor(app, R.color.shiftrail_icon_blue))
+                .setBadgeIconType(NotificationCompat.BADGE_ICON_SMALL)
+                .setNumber(1)
                 .setContentTitle(app.getString(R.string.default_event_title))
                 .setContentText(body)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(body))

@@ -48,6 +48,24 @@ class DatabaseTest {
                 assertEquals("Luca Baldeddu", db.dao().profile()!!.name)
                 assertEquals(123L, db.dao().shifts("week").single().calendarEventId)
                 assertTrue(db.dao().shifts("week").single().endNextDay)
+                val legacy = db.dao().shifts("week").single()
+                val legacyDate = java.time.LocalDate.parse(legacy.date)
+                val legacyPeriod =
+                    it.turni.core.WorkPeriod(
+                        legacy.id,
+                        legacyDate,
+                        java.time.LocalTime.parse(legacy.startTime),
+                        java.time.LocalTime.parse(legacy.endTime),
+                        it.turni.core.WorkSource.SCHEDULE,
+                    )
+                assertEquals(
+                    60L,
+                    it.turni.core.WorkingHours.summarize(
+                            listOf(legacyPeriod),
+                            it.turni.core.HoursWindow(legacyDate, legacyDate.plusDays(1)),
+                        )
+                        .nightMinutes,
+                )
                 val settings = db.dao().settings()!!
                 assertEquals("Lavoro", settings.title)
                 assertEquals(30, settings.reminderMinutes)

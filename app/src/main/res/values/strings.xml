@@ -175,7 +175,7 @@
     <string name="hours_boundary_note">I turni notturni sono divisi alla mezzanotte: ogni mese e settimana conta solo le ore del proprio periodo.</string>
     <string name="updates">Aggiornamenti</string>
     <string name="update_version">Versione installata: %1$s</string>
-    <string name="update_auto_note">Controllo automatico a ogni ritorno nell’app. Quando viene rilevata una nuova versione compatibile, devi installarla per continuare.</string>
+    <string name="update_auto_note">Controllo automatico a ogni ritorno nell’app. Quando viene rilevata una nuova versione stabile compatibile, devi installarla per continuare.</string>
     <string name="update_check">Controlla aggiornamenti</string>
     <string name="update_checking">Controllo in corso…</string>
     <string name="update_available">Disponibile Shiftrail %1$s</string>
@@ -218,4 +218,11 @@
     <string name="notification_channel">Promemoria lavoro</string>
     <string name="notification_channel_description">Avvisi prima del lavoro. Suono, vibrazione e Non disturbare dipendono anche dalle impostazioni Android.</string>
     <string name="notification_work_body">Lavoro dal %1$s al %2$s.</string>
+    <string name="beta_join">Partecipa alla beta</string>
+    <string name="beta_note">Scelta facoltativa, applicata subito. Ricevi anche versioni di prova, che possono contenere errori. Disattiva per tornare a ricevere solo versioni stabili: i dati restano e non viene installata automaticamente una versione precedente.</string>
+    <string name="beta_installed">Hai installato una beta. Uscendo dal programma potrai aggiornare alla prossima versione stabile con numero di build successivo.</string>
+    <string name="beta_available">Beta disponibile: Shiftrail %1$s</string>
+    <string name="beta_optional">Questa beta è facoltativa. Puoi continuare a usare l’app e uscire dal programma quando vuoi.</string>
+    <string name="beta_download">Scarica beta</string>
+    <string name="beta_check_failed">Non riesco a controllare le beta. Le verifiche della versione stabile e le funzioni locali restano disponibili. Riprova più tardi.</string>
 </resources>
