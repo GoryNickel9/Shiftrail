@@ -180,6 +180,15 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                                 summary.extraMinutes,
                                 "hours_extra",
                             )
+                            HoursTotalLine(
+                                stringResource(R.string.hours_night),
+                                summary.nightMinutes,
+                                "hours_night",
+                            )
+                            Text(
+                                stringResource(R.string.hours_night_note),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                     }
                 }
@@ -531,7 +540,11 @@ private fun WorkHoursDialog(
                     val parsedDate = runCatching { LocalDate.parse(date.trim()) }.getOrNull()
                     fun time(value: String) =
                         if (Regex("\\d{2}:\\d{2}").matches(value.trim()))
-                            runCatching { LocalTime.parse(value.trim()) }.getOrNull()
+                            runCatching {
+                                val parts = value.trim().split(":")
+                                ShiftParser.clockTime(parts[0].toInt(), parts[1].toInt())
+                            }
+                                .getOrNull()
                         else null
                     val parsedStart = time(start)
                     val parsedEnd = time(end)

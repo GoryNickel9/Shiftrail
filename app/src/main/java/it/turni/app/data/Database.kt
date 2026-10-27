@@ -83,6 +83,10 @@ data class SettingsEntity(
     val developer: Boolean = false,
     @ColumnInfo(defaultValue = "-16023485") val restColor: Int? = 0xff0b8043.toInt(),
     @ColumnInfo(defaultValue = "1") val saveRestDays: Boolean = true,
+    @ColumnInfo(defaultValue = "0") val notificationsEnabled: Boolean = false,
+    @ColumnInfo(defaultValue = "30") val notificationMinutes: Int = 30,
+    @ColumnInfo(defaultValue = "1") val notificationSound: Boolean = true,
+    @ColumnInfo(defaultValue = "1") val notificationVibration: Boolean = true,
 )
 
 @Entity(
@@ -116,6 +120,8 @@ interface TurniDao {
     @Query("SELECT * FROM settings WHERE id = 1") suspend fun settings(): SettingsEntity?
 
     @Upsert suspend fun saveSettings(settings: SettingsEntity)
+
+    @Query("SELECT * FROM settings WHERE id = 1") fun observeSettings(): Flow<SettingsEntity?>
 
     @Query("SELECT * FROM code_mappings ORDER BY code") suspend fun mappings(): List<MappingEntity>
 
@@ -204,13 +210,31 @@ interface TurniDao {
             SettingsEntity::class,
             ExtraWorkEntity::class,
         ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class TurniDatabase : RoomDatabase() {
     abstract fun dao(): TurniDao
 
     companion object {
+        val MIGRATION_2_3 =
+            object : Migration(2, 3) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE settings ADD COLUMN notificationsEnabled INTEGER NOT NULL DEFAULT 0"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE settings ADD COLUMN notificationMinutes INTEGER NOT NULL DEFAULT 30"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE settings ADD COLUMN notificationSound INTEGER NOT NULL DEFAULT 1"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE settings ADD COLUMN notificationVibration INTEGER NOT NULL DEFAULT 1"
+                    )
+                }
+            }
+
         val MIGRATION_1_2 =
             object : Migration(1, 2) {
                 override fun migrate(db: SupportSQLiteDatabase) {

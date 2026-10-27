@@ -6,8 +6,10 @@ import android.content.ContentValues
 import android.provider.CalendarContract
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import it.turni.app.data.*
+import it.turni.app.ui.AppViewModel
 import it.turni.core.*
 import java.time.YearMonth
 import java.time.ZoneId
@@ -31,6 +33,13 @@ class ShiftHoursUiTest {
         val oldProfile = runBlocking { dao.profile() }
         compose.waitUntil(15000) {
             compose.onAllNodesWithText("Impostazioni").fetchSemanticsNodes().isNotEmpty()
+        }
+        lateinit var readyViewModel: AppViewModel
+        compose.runOnIdle {
+            readyViewModel = ViewModelProvider(compose.activity)[AppViewModel::class.java]
+        }
+        compose.waitUntil(15000) {
+            readyViewModel.state.value.loaded && !readyViewModel.state.value.busy
         }
         if (oldProfile == null) {
             compose.onNodeWithText("Impostazioni").performClick()

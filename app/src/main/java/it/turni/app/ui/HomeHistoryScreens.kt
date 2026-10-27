@@ -70,23 +70,24 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        item {
-            Box(
-                Modifier.fillMaxWidth()
-                    .height(170.dp)
-                    .background(Color(0xFFF4F7F6), MaterialTheme.shapes.large)
-                    .testTag("home_illustration")
-            ) {
-                artwork.value?.let { bitmap ->
-                    Image(
-                        bitmap.asImageBitmap(),
-                        null,
-                        Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
-                    )
+        if (state.background == null)
+            item {
+                Box(
+                    Modifier.fillMaxWidth()
+                        .height(170.dp)
+                        .background(Color(0xFFF4F7F6), MaterialTheme.shapes.large)
+                        .testTag("home_illustration")
+                ) {
+                    artwork.value?.let { bitmap ->
+                        Image(
+                            bitmap.asImageBitmap(),
+                            null,
+                            Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
                 }
             }
-        }
         item {
             if (state.profile == null) {
                 Card(

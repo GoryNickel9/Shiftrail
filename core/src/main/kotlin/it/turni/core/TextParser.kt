@@ -109,6 +109,10 @@ object ShiftParser {
         Regex("^(\\d{1,2})(?:[:.](\\d{2}))?\\s*[-–—]\\s*(\\d{1,2})(?:[:.](\\d{2}))?$")
     const val REST_CODE = "X"
 
+    /** 24:00 is the midnight alias used by rosters; all other hour-24 values are invalid. */
+    fun clockTime(hour: Int, minute: Int): LocalTime =
+        if (hour == 24 && minute == 0) LocalTime.MIDNIGHT else LocalTime.of(hour, minute)
+
     fun parse(
         raw: String,
         date: LocalDate,
@@ -127,14 +131,14 @@ object ShiftParser {
             else null
         if (match != null) {
             val start = runCatching {
-                LocalTime.of(
+                clockTime(
                     match.groupValues[1].toInt(),
                     match.groupValues[2].ifBlank { "0" }.toInt(),
                 )
             }
                 .getOrNull()
             val end = runCatching {
-                LocalTime.of(
+                clockTime(
                     match.groupValues[3].toInt(),
                     match.groupValues[4].ifBlank { "0" }.toInt(),
                 )

@@ -32,7 +32,7 @@ data class WorkPeriod(
         get() = (endDate ?: date.plusDays(if (end < start) 1 else 0)).atTime(end)
 }
 
-data class HoursEntry(val period: WorkPeriod, val minutes: Long)
+data class HoursEntry(val period: WorkPeriod, val minutes: Long, val nightMinutes: Long = 0)
 
 data class HoursSummary(val entries: List<HoursEntry>) {
     val workMinutes
@@ -43,6 +43,10 @@ data class HoursSummary(val entries: List<HoursEntry>) {
 
     val totalMinutes
         get() = workMinutes + extraMinutes
+
+    /** Subset of totalMinutes, including extras; never added to the total again. */
+    val nightMinutes
+        get() = entries.sumOf { it.nightMinutes }
 }
 
 data class HoursWindow(val from: LocalDate, val until: LocalDate) {
@@ -77,17 +81,34 @@ object WorkingHours {
                     else {
                         var cursor = start
                         var uncovered = Duration.ZERO
+                        var nightMinutes = 0L
                         for ((usedStart, usedEnd) in occupied.sortedBy { it.first }) {
                             if (usedEnd <= cursor || usedStart >= end) continue
-                            if (usedStart > cursor) uncovered += Duration.between(cursor, usedStart)
+                            if (usedStart > cursor) {
+                                uncovered += Duration.between(cursor, usedStart)
+                                nightMinutes += nightMinutesBetween(cursor, usedStart)
+                            }
                             cursor = maxOf(cursor, minOf(usedEnd, end))
                         }
                         uncovered += Duration.between(cursor, end)
+                        nightMinutes += nightMinutesBetween(cursor, end)
                         occupied += start to end
-                        HoursEntry(period, uncovered.toMinutes())
+                        HoursEntry(period, uncovered.toMinutes(), nightMinutes)
                     }
                 }
                 .sortedWith(compareBy({ it.period.startDateTime }, { it.period.id }))
         )
+    }
+
+    private fun nightMinutesBetween(start: LocalDateTime, end: LocalDateTime): Long {
+        var date = start.toLocalDate()
+        var minutes = 0L
+        while (date.atStartOfDay() < end) {
+            val from = maxOf(start, date.atStartOfDay())
+            val until = minOf(end, date.atTime(6, 0))
+            if (until > from) minutes += Duration.between(from, until).toMinutes()
+            date = date.plusDays(1)
+        }
+        return minutes
     }
 }

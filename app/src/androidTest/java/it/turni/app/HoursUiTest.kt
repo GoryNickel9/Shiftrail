@@ -32,6 +32,13 @@ class HoursUiTest {
         compose.waitUntil(15000) {
             compose.onAllNodesWithText("Impostazioni").fetchSemanticsNodes().isNotEmpty()
         }
+        lateinit var readyViewModel: AppViewModel
+        compose.runOnIdle {
+            readyViewModel = ViewModelProvider(compose.activity)[AppViewModel::class.java]
+        }
+        compose.waitUntil(15000) {
+            readyViewModel.state.value.loaded && !readyViewModel.state.value.busy
+        }
         if (oldProfile == null) {
             compose.onNodeWithText("Impostazioni").performClick()
             compose.onNodeWithText("Nome e cognome").performTextInput("Marta Neri")
@@ -147,6 +154,7 @@ class HoursUiTest {
             waitForTotal("8 h 00 min")
             compose.onNodeWithTag("hours_work").assertTextEquals("8 h 00 min")
             compose.onNodeWithTag("hours_extra").assertTextEquals("0 h 00 min")
+            compose.onNodeWithTag("hours_night").assertTextEquals("3 h 00 min")
             compose.onNodeWithText("Aggiungi lavoro extra").performClick()
             compose.onNodeWithTag("extra_date").performTextClearance()
             compose.onNodeWithTag("extra_date").performTextInput(month.atDay(8).toString())
@@ -154,6 +162,7 @@ class HoursUiTest {
             compose.onNodeWithTag("extra_end").performScrollTo().performTextInput("01:00")
             compose.onNodeWithText("Salva").performClick()
             waitForTotal("11 h 00 min")
+            compose.onNodeWithTag("hours_night").assertTextEquals("4 h 00 min")
             val extraId =
                 requireNotNull(
                         runBlocking {

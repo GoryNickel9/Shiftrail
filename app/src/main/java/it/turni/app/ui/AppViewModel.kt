@@ -52,12 +52,14 @@ data class AppState(
     val hoursLoaded: Boolean = false,
     val hoursCalendarAvailable: Boolean = false,
     val updater: UpdateState = UpdateState(),
+    val background: Bitmap? = null,
 )
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as TurniApplication
     private val dao = app.database.dao()
     private val images = ImageProcessor(app)
+    private val backgrounds = AppBackground(app)
     private val extractor: ScheduleExtractor = LocalScheduleExtractor(images)
     private val mutable =
         MutableStateFlow(AppState(updater = UpdateState(release = app.updater.requiredUpdate())))
@@ -68,6 +70,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var updateJob: Job? = null
 
     fun refreshCalendar() {
+        app.notifications.requestRefresh()
         if (hoursJob?.isCompleted == true) mutable.value.profile?.let { watchHours(it.id) }
         else calendarRefresh.update { it + 1 }
     }
@@ -178,6 +181,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
             profile?.let { watch(it.id) }
+            try {
+                val background = backgrounds.load()
+                mutable.update { it.copy(background = background) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                reportError(app.getString(R.string.background_failed))
+            }
         }
     }
 
@@ -276,6 +287,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 .collect { (upcoming, periods, extras, calendarAvailable) ->
+                    app.notifications.requestRefresh()
                     mutable.update {
                         it.copy(
                             hoursPeriods = periods,
@@ -408,6 +420,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun saveSettings(name: String, settings: SettingsEntity, onSaved: () -> Unit) = launchWork {
         require(name.isNotBlank() && name.trim().length <= 160)
         require(settings.reminderMinutes == null || settings.reminderMinutes in 0..10080)
+        require(settings.notificationMinutes in 0..10080)
         val profile =
             ProfileEntity(
                 mutable.value.profile?.id ?: UUID.randomUUID().toString(),
@@ -422,6 +435,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         mutable.update { it.copy(profile = profile, settings = savedSettings) }
         watch(profile.id)
         onSaved()
+    }
+
+    fun setBackground(uri: Uri?) = launchWork {
+        try {
+            val background =
+                if (uri == null) {
+                    backgrounds.clear()
+                    null
+                } else backgrounds.save(uri)
+            mutable.update { it.copy(background = background) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            reportError(app.getString(R.string.background_failed))
+        }
     }
 
     fun loadImage(uri: Uri, capturedFile: java.io.File? = null, onLoaded: () -> Unit) = launchWork {

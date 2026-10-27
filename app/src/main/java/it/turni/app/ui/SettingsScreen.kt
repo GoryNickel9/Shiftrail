@@ -1,5 +1,8 @@
 package it.turni.app.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -60,6 +63,31 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
     var invalid by rememberSaveable { mutableStateOf(false) }
     var choosingReminder by rememberSaveable { mutableStateOf(false) }
     var choosingColor by rememberSaveable { mutableIntStateOf(0) }
+    var notificationsEnabled by rememberSaveable {
+        mutableStateOf(state.settings.notificationsEnabled)
+    }
+    var notificationSound by rememberSaveable { mutableStateOf(state.settings.notificationSound) }
+    var notificationVibration by rememberSaveable {
+        mutableStateOf(state.settings.notificationVibration)
+    }
+    var notificationHours by rememberSaveable {
+        mutableStateOf((state.settings.notificationMinutes / 60).toString())
+    }
+    var notificationMinutes by rememberSaveable {
+        mutableStateOf((state.settings.notificationMinutes % 60).toString())
+    }
+    val hours = notificationHours.toIntOrNull()
+    val minutes = notificationMinutes.toIntOrNull()
+    val validNotificationTime =
+        hours != null &&
+            minutes != null &&
+            hours in 0..168 &&
+            minutes in 0..59 &&
+            hours * 60 + minutes <= 10080
+    val backgroundPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            if (uri != null) vm.setBackground(uri)
+        }
     Column(Modifier.fillMaxSize().imePadding()) {
         LazyColumn(
             Modifier.weight(1f).fillMaxWidth(),
@@ -187,11 +215,56 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            item {
+                Text(
+                    stringResource(R.string.background_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    stringResource(R.string.background_note),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedButton(
+                    onClick = {
+                        backgroundPicker.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("choose_background"),
+                ) {
+                    Text(stringResource(R.string.background_choose))
+                }
+                if (state.background != null)
+                    TextButton(
+                        onClick = { vm.setBackground(null) },
+                        modifier = Modifier.fillMaxWidth().testTag("reset_background"),
+                    ) {
+                        Text(stringResource(R.string.background_reset))
+                    }
+            }
+            item {
+                NotificationSettings(
+                    enabled = notificationsEnabled,
+                    onEnabled = { notificationsEnabled = it },
+                    sound = notificationSound,
+                    onSound = { notificationSound = it },
+                    vibration = notificationVibration,
+                    onVibration = { notificationVibration = it },
+                    hours = notificationHours,
+                    onHours = { notificationHours = it },
+                    minutes = notificationMinutes,
+                    onMinutes = { notificationMinutes = it },
+                    validTime = validNotificationTime,
+                    onError = vm::reportError,
+                )
+            }
             item { UpdateSettings(state.updater, vm) }
         }
         ActionFooter(
             stringResource(R.string.save),
-            enabled = !state.busy,
+            enabled = !state.busy && (!notificationsEnabled || validNotificationTime),
             note = if (invalid) stringResource(R.string.invalid_name) else null,
             action = {
                 invalid = name.isBlank() || name.trim().length > 160
@@ -203,6 +276,13 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                             eventColor = workColor,
                             restColor = restColor,
                             saveRestDays = saveRestDays,
+                            notificationsEnabled = notificationsEnabled,
+                            notificationMinutes =
+                                if (validNotificationTime)
+                                    requireNotNull(hours) * 60 + requireNotNull(minutes)
+                                else state.settings.notificationMinutes,
+                            notificationSound = notificationSound,
+                            notificationVibration = notificationVibration,
                         ),
                         onSaved,
                     )

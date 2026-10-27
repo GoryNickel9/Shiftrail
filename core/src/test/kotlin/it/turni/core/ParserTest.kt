@@ -225,13 +225,15 @@ class ParserTest {
                 "12-12",
                 "12-18-20",
                 "12-18 note",
-                "24-01",
+                "24:01-06",
             )
             .forEach {
                 assertEquals(it, CellType.UNKNOWN, ShiftParser.parse(it, monday).type)
             }
         assertEquals(CellType.EMPTY, ShiftParser.parse("", monday).type)
         assertEquals(monday.plusDays(1), ShiftParser.parse("19-00", monday).endDate)
+        assertEquals(LocalTime.MIDNIGHT, ShiftParser.parse("24-01", monday).start)
+        assertEquals(LocalTime.MIDNIGHT, ShiftParser.parse("19-24:00", monday).end)
     }
 
     @Test

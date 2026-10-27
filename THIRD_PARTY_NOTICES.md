@@ -5,7 +5,7 @@ Non sono stati copiati file applicativi né creati fork. Le dipendenze vengono r
 | Componente | Licenza / termini | Fonte |
 | --- | --- | --- |
 | Kotlin, coroutine | Apache-2.0 | https://github.com/JetBrains/kotlin, https://github.com/Kotlin/kotlinx.coroutines |
-| AndroidX Compose, Room, CameraX, Lifecycle, Navigation, ExifInterface | Apache-2.0 | https://android.googlesource.com/platform/frameworks/support/ |
+| AndroidX Compose, Room, CameraX, Lifecycle, Navigation, ExifInterface, WorkManager | Apache-2.0 | https://android.googlesource.com/platform/frameworks/support/ |
 | JUnit 4 | EPL-1.0 | https://github.com/junit-team/junit4 |
 | Gradle | Apache-2.0 | https://github.com/gradle/gradle |
 | ML Kit e Google Play Services transitivi | Termini SDK Google e licenze dei componenti inclusi | https://developers.google.com/ml-kit/terms |

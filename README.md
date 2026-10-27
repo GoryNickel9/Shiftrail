@@ -26,6 +26,12 @@ Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i
 
 Home e Ore usano la stessa lettura degli eventi collegati al calendario. Home elenca i turni futuri senza il precedente taglio a 14 righe; Ore li filtra per mese o settimana. Le importazioni ripetute dello stesso giorno in calendari diversi vengono risolte prima di costruire entrambe le viste.
 
+In **Ore**, sotto **Extra**, **Ore notturne** indica i minuti lavorati dalle 00:00 alle 06:00, extra inclusi e senza sovrapposizioni. È una quota del totale, non un’aggiunta. `24:00` è accettato come alias di `00:00` negli orari.
+
+In **Impostazioni → Sfondo dell’app** puoi scegliere una foto personale o ripristinare lo sfondo predefinito. La modifica si applica subito; l’immagine viene ridimensionata e conservata nella memoria privata dell’app.
+
+In **Impostazioni → Notifiche dell’app** puoi abilitare un avviso prima del lavoro, impostare ore e minuti di anticipo e scegliere suono e vibrazione. Premi **Salva** per applicare. Le notifiche sono inizialmente disattivate e distinte dai promemoria del calendario. Android può richiedere il permesso per notifiche e avvisi precisi; senza quest’ultimo il promemoria può arrivare in ritardo. Dettagli e limiti in [notifiche e sfondo](docs/PERSONALIZATION_NOTIFICATIONS.md).
+
 ## Build
 
 Richiede JDK 17 o 21, Android SDK 35 e build-tools 35.0.0. Apri il repository in Android Studio oppure configura `ANDROID_HOME` / `local.properties` con `sdk.dir`.

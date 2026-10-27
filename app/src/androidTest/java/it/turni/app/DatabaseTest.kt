@@ -34,7 +34,15 @@ class DatabaseTest {
                 execSQL("INSERT INTO settings VALUES (1, 1, 'Old title', '', '', NULL, NULL, 0)")
                 close()
             }
-            migrations.runMigrationsAndValidate(name, 2, true, TurniDatabase.MIGRATION_1_2).close()
+            migrations
+                .runMigrationsAndValidate(
+                    name,
+                    3,
+                    true,
+                    TurniDatabase.MIGRATION_1_2,
+                    TurniDatabase.MIGRATION_2_3,
+                )
+                .close()
             val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()
             try {
                 assertEquals("Luca Baldeddu", db.dao().profile()!!.name)
@@ -46,6 +54,21 @@ class DatabaseTest {
                 assertEquals(0xff1a73e8.toInt(), settings.eventColor)
                 assertEquals(0xff0b8043.toInt(), settings.restColor)
                 assertTrue(settings.saveRestDays)
+                assertFalse(settings.notificationsEnabled)
+                assertEquals(30, settings.notificationMinutes)
+                assertTrue(settings.notificationSound)
+                assertTrue(settings.notificationVibration)
+                db.dao()
+                    .saveSettings(
+                        settings.copy(
+                            notificationsEnabled = true,
+                            notificationMinutes = 95,
+                            notificationSound = false,
+                            notificationVibration = false,
+                        )
+                    )
+                assertEquals(95, db.dao().settings()!!.notificationMinutes)
+                assertFalse(db.dao().settings()!!.notificationSound)
                 val extra = ExtraWorkEntity("extra", "employee", "2026-10-06", "23:00", "01:00", 2)
                 db.dao().saveExtra(extra)
                 db.dao().saveExtra(extra.copy(endTime = "02:00"))
@@ -57,6 +80,40 @@ class DatabaseTest {
                 assertNotNull(db.dao().findExtra("employee", extra.date, "23:00", "02:00"))
                 db.dao().removeExtra(extra.id, "employee")
                 assertNull(db.dao().findExtra("employee", extra.date, "23:00", "02:00"))
+            } finally {
+                db.close()
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun migrationFromTwoPreservesSettingsAndExtraWork() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "migration-notifications-test.db"
+        try {
+            migrations.createDatabase(name, 2).apply {
+                execSQL(
+                    "INSERT INTO settings VALUES (1, 42, 'Lavoro', 'Place', 'Details', 15, 1234, 0, 5678, 0)"
+                )
+                execSQL(
+                    "INSERT INTO extra_work VALUES ('extra', 'employee', '2026-10-27', '00:00', '06:00', 1)"
+                )
+                close()
+            }
+            migrations.runMigrationsAndValidate(name, 3, true, TurniDatabase.MIGRATION_2_3).close()
+            val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()
+            try {
+                val settings = requireNotNull(db.dao().settings())
+                assertEquals(42L, settings.calendarId)
+                assertEquals(15, settings.reminderMinutes)
+                assertEquals(1234, settings.eventColor)
+                assertEquals(5678, settings.restColor)
+                assertFalse(settings.saveRestDays)
+                assertFalse(settings.notificationsEnabled)
+                assertEquals(30, settings.notificationMinutes)
+                assertNotNull(db.dao().findExtra("employee", "2026-10-27", "00:00", "06:00"))
             } finally {
                 db.close()
             }
