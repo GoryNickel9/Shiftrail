@@ -104,7 +104,7 @@ class ScheduleConsistencyUiTest {
                 compose
                     .onNode(hasScrollToIndexAction())
                     .performScrollToNode(hasTestTag("home_shift_consistency-6-2"))
-                compose.onNodeWithText("12:30 → 15:30").assertIsDisplayed()
+                compose.onNodeWithText("12:30 – 15:30").assertIsDisplayed()
                 File(app.getExternalFilesDir(null), "qa-home-week.png").outputStream().use {
                     compose
                         .onRoot()
@@ -133,7 +133,7 @@ class ScheduleConsistencyUiTest {
                 compose
                     .onNode(hasScrollToIndexAction())
                     .performScrollToNode(hasTestTag("home_shift_consistency-6-2"))
-                compose.onNodeWithText("10:30 → 17:30").assertIsDisplayed()
+                compose.onNodeWithText("10:30 – 17:30").assertIsDisplayed()
                 assertEquals(
                     420L,
                     WorkingHours.summarize(vm.state.value.hoursPeriods, HoursWindow(sunday, sunday))
@@ -194,7 +194,7 @@ class ScheduleConsistencyUiTest {
                 compose
                     .onNode(hasScrollToIndexAction())
                     .performScrollToNode(hasTestTag("home_shift_consistency-6-2"))
-                compose.onNodeWithText("10:00 → 13:00").assertIsDisplayed()
+                compose.onNodeWithText("10:00 – 13:00").assertIsDisplayed()
             } finally {
                 compose.runOnIdle { store.clear() }
                 runBlocking {

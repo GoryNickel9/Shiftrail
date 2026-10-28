@@ -54,7 +54,10 @@ class ShiftHoursUiTest {
         }
         val profile = requireNotNull(runBlocking { dao.profile() })
         val date = YearMonth.now().atDay(5)
-        val weekId = "edit-hours-week"
+        val previousWeek = runBlocking {
+            dao.weekFor(profile.id, date.with(java.time.DayOfWeek.MONDAY).toString())
+        }
+        val weekId = previousWeek?.id ?: "edit-hours-week"
         val shiftId = "edit-hours-shift"
         val resolver = context.contentResolver
         val calendarUri =
@@ -175,20 +178,20 @@ class ShiftHoursUiTest {
             compose.onNodeWithText("Modifica orario turno").assertIsDisplayed()
             compose.onNodeWithTag("extra_date").assertTextContains(date.toString())
             compose.onNodeWithTag("extra_start").assertTextContains("19:00")
-            compose.onNodeWithTag("extra_start").performTextReplacement("25:00")
+            compose.selectTime("extra_start", "01:00")
             compose.onNodeWithText("Salva").performClick()
             compose
                 .onNodeWithText("Inserisci una data valida e due orari diversi nel formato HH:MM.")
                 .performScrollTo()
                 .assertIsDisplayed()
             assertEquals("19:00", runBlocking { dao.shift(shiftId, profile.id) }!!.startTime)
-            compose.onNodeWithTag("extra_start").performScrollTo().performTextReplacement("01:00")
+            compose.selectTime("extra_start", "01:00")
             compose.onNodeWithText("Salva").performClick()
             compose
                 .onNodeWithText("Inserisci una data valida e due orari diversi nel formato HH:MM.")
                 .performScrollTo()
                 .assertIsDisplayed()
-            compose.onNodeWithTag("extra_start").performScrollTo().performTextReplacement("20:30")
+            compose.selectTime("extra_start", "20:30")
             compose.onNodeWithTag("extra_start").assertTextContains("20:30")
             compose.waitForIdle()
             compose.activityRule.scenario.recreate()
@@ -221,7 +224,7 @@ class ShiftHoursUiTest {
             waitForTotal("4 h 30 min")
             openEdit(shiftId)
             compose.onNodeWithTag("extra_start").assertTextContains("20:30")
-            compose.onNodeWithTag("extra_start").performTextReplacement("21:00")
+            compose.selectTime("extra_start", "21:00")
             compose.onNodeWithText("Annulla").performClick()
             assertEquals("20:30", runBlocking { dao.shift(shiftId, profile.id) }!!.startTime)
             compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
@@ -256,10 +259,12 @@ class ShiftHoursUiTest {
         } finally {
             runBlocking {
                 dao.removeShift(shiftId)
-                app.database.openHelper.writableDatabase.execSQL(
-                    "DELETE FROM weeks WHERE id = ?",
-                    arrayOf(weekId),
-                )
+                if (previousWeek != null) dao.saveWeek(previousWeek)
+                else
+                    app.database.openHelper.writableDatabase.execSQL(
+                        "DELETE FROM weeks WHERE id = ?",
+                        arrayOf(weekId),
+                    )
                 if (oldProfile == null)
                     app.database.openHelper.writableDatabase.execSQL(
                         "DELETE FROM profiles WHERE id = ?",

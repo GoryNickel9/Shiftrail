@@ -1,6 +1,5 @@
 package it.turni.app
 
-import android.graphics.Color
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.assertCountEquals
@@ -16,10 +15,10 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
 import org.junit.Test
 
@@ -42,8 +41,7 @@ class UiSmokeTest {
         compose.onNodeWithText("Titolo evento").assertDoesNotExist()
         compose.onNodeWithText("Nome e cognome").performTextClearance()
         compose.onNodeWithText("Nome e cognome").performTextInput("Luca Baldeddu")
-        scrollToSetting("reminder_setting").performClick()
-        compose.onNode(hasText("1 ora prima") and hasAnyAncestor(isDialog())).performClick()
+        compose.onNodeWithTag("menu_calendar").performScrollTo().performClick()
         scrollToSetting("work_color").performClick()
         compose.onNode(hasText("Viola") and hasAnyAncestor(isDialog())).performClick()
         scrollToSetting("rest_color").performClick()
@@ -64,8 +62,7 @@ class UiSmokeTest {
         compose.onNodeWithText("Importa per Luca Baldeddu").assertIsDisplayed()
         assertSimplifiedHome()
         compose.onNodeWithText("Impostazioni").performClick()
-        scrollToSetting("reminder_setting")
-        compose.onNodeWithText("1 ora prima").assertIsDisplayed()
+        compose.onNodeWithTag("menu_calendar").performScrollTo().performClick()
         scrollToSetting("work_color")
         compose.onNodeWithText("Viola").assertIsDisplayed()
         scrollToSetting("rest_color")
@@ -91,36 +88,5 @@ class UiSmokeTest {
     private fun assertSimplifiedHome() {
         compose.onNodeWithText("Storico").assertDoesNotExist()
         compose.onNodeWithText("Shiftrail").assertIsDisplayed()
-        // Inspect the real Android framebuffer: an Image node can exist while nothing is drawn.
-        compose.onNodeWithTag("home_illustration").assertIsDisplayed()
-        compose.waitUntil(15000) {
-            val bounds =
-                compose.onNodeWithTag("home_illustration").fetchSemanticsNode().boundsInWindow
-            val screenshot =
-                InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-                    ?: return@waitUntil false
-            var bluePixels = 0
-            try {
-                for (y in
-                    bounds.top.toInt().coerceAtLeast(0) until
-                        bounds.bottom.toInt().coerceAtMost(screenshot.height) step
-                        8) {
-                    for (x in
-                        bounds.left.toInt().coerceAtLeast(0) until
-                            bounds.right.toInt().coerceAtMost(screenshot.width) step
-                            8) {
-                        val pixel = screenshot.getPixel(x, y)
-                        if (
-                            Color.blue(pixel) > Color.red(pixel) + 40 &&
-                                Color.blue(pixel) > Color.green(pixel) + 20
-                        )
-                            bluePixels++
-                    }
-                }
-            } finally {
-                screenshot.recycle()
-            }
-            bluePixels > 30
-        }
     }
 }

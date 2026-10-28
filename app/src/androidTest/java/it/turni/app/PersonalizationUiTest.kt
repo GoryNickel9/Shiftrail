@@ -62,6 +62,7 @@ class PersonalizationUiTest {
             compose.waitUntil(15000) {
                 compose.onAllNodesWithTag("app_background").fetchSemanticsNodes().isNotEmpty()
             }
+            compose.onNodeWithTag("menu_notifications").performScrollTo().performClick()
             compose
                 .onNode(hasScrollToIndexAction())
                 .performScrollToNode(hasTestTag("notifications_enabled"))
@@ -95,10 +96,13 @@ class PersonalizationUiTest {
                 compose.onAllNodesWithTag("app_background").fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText("Impostazioni").performClick()
+            compose.onNodeWithTag("menu_notifications").performScrollTo().performClick()
             compose
                 .onNode(hasScrollToIndexAction())
                 .performScrollToNode(hasTestTag("notification_minutes"))
             compose.onNodeWithTag("notification_minutes").assertTextContains("15")
+            compose.onNodeWithTag("settings_back").performClick()
+            compose.onNodeWithTag("menu_background").performScrollTo().performClick()
             compose
                 .onNode(hasScrollToIndexAction())
                 .performScrollToNode(hasTestTag("reset_background"))

@@ -102,6 +102,7 @@ fun ActionFooter(label: String, enabled: Boolean = true, note: String? = null, a
             }
             Button(
                 onClick = action,
+                shape = MaterialTheme.shapes.medium,
                 enabled = enabled,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             ) {

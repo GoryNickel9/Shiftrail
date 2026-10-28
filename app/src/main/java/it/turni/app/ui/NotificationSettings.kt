@@ -64,14 +64,6 @@ fun NotificationSettings(
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            stringResource(R.string.notifications_title),
-            style = MaterialTheme.typography.titleLarge,
-        )
-        Text(
-            stringResource(R.string.notifications_note),
-            style = MaterialTheme.typography.bodySmall,
-        )
         NotificationToggle(
             stringResource(R.string.notifications_enable),
             enabled,
@@ -89,6 +81,10 @@ fun NotificationSettings(
                 permission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         if (enabled) {
+            Text(
+                stringResource(R.string.notification_advance),
+                style = MaterialTheme.typography.titleMedium,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     hours,
@@ -109,16 +105,12 @@ fun NotificationSettings(
                     isError = !validTime,
                 )
             }
-            Text(
-                stringResource(
-                    if (validTime) R.string.notification_time_note
-                    else R.string.notification_time_invalid
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color =
-                    if (validTime) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.error,
-            )
+            if (!validTime)
+                Text(
+                    stringResource(R.string.notification_time_invalid),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             NotificationToggle(
                 stringResource(R.string.notification_sound),
                 sound,

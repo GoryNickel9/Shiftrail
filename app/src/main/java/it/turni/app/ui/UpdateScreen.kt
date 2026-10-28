@@ -19,9 +19,7 @@ import it.turni.app.update.UpdateState
 @Composable
 fun UpdateSettings(state: UpdateState, vm: AppViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.updates), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(R.string.update_version, BuildConfig.VERSION_NAME))
-        Text(stringResource(R.string.update_auto_note), style = MaterialTheme.typography.bodySmall)
         val betaLabel = stringResource(R.string.beta_join)
         Row(
             Modifier.fillMaxWidth().heightIn(min = 48.dp),
@@ -35,7 +33,6 @@ fun UpdateSettings(state: UpdateState, vm: AppViewModel) {
                 enabled = !state.downloading,
             )
         }
-        Text(stringResource(R.string.beta_note), style = MaterialTheme.typography.bodySmall)
         if (BuildConfig.VERSION_NAME.contains("-beta."))
             Text(
                 stringResource(R.string.beta_installed),

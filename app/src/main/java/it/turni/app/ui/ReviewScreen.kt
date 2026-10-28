@@ -302,8 +302,6 @@ private fun ReviewCellCard(
                     if (cell.type == CellType.UNKNOWN) MaterialTheme.typography.bodyLarge
                     else MaterialTheme.typography.headlineSmall,
             )
-            if (cell.endNextDay)
-                Text(stringResource(R.string.overnight), style = MaterialTheme.typography.bodySmall)
             if (cell.type == CellType.CODE)
                 Text(
                     stringResource(

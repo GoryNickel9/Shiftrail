@@ -1,10 +1,11 @@
 package it.turni.app
 
 import android.graphics.Bitmap
+import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
 import it.turni.app.ui.AppViewModel
@@ -16,7 +17,7 @@ import org.junit.Rule
 import org.junit.Test
 
 class CalendarPreferenceUiTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
     fun destinationCanBeChosenInSettingsAndSurvivesANewViewModel() {
@@ -29,11 +30,12 @@ class CalendarPreferenceUiTest {
                 val model = mutableStateOf(AppViewModel(app))
                 val store = ViewModelStore().apply { put("preferences", model.value) }
                 try {
-                    compose.setContent { TurniApp(model.value) }
+                    compose.runOnUiThread { compose.activity.setContent { TurniApp(model.value) } }
                     compose.waitUntil(15000) {
                         model.value.state.value.loaded && !model.value.state.value.busy
                     }
                     compose.onNodeWithText("Impostazioni").performClick()
+                    compose.onNodeWithTag("menu_calendar").performClick()
                     compose
                         .onNode(hasScrollToIndexAction())
                         .performScrollToNode(hasTestTag("destination_calendar"))
@@ -72,6 +74,21 @@ class CalendarPreferenceUiTest {
                         model.value.state.value.loaded && !model.value.state.value.busy
                     }
                     assertEquals(target.id, model.value.state.value.settings.calendarId)
+                    if (
+                        compose
+                            .onAllNodesWithTag("destination_calendar")
+                            .fetchSemanticsNodes()
+                            .isEmpty()
+                    ) {
+                        if (
+                            compose
+                                .onAllNodesWithTag("menu_calendar")
+                                .fetchSemanticsNodes()
+                                .isEmpty()
+                        )
+                            compose.onNodeWithText("Impostazioni").performClick()
+                        compose.onNodeWithTag("menu_calendar").performScrollTo().performClick()
+                    }
                     compose
                         .onNode(hasScrollToIndexAction())
                         .performScrollToNode(hasTestTag("destination_calendar"))

@@ -13,7 +13,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -66,8 +69,7 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
     val window = weeks.getOrNull(weekIndex) ?: HoursWindow(month.atDay(1), month.atEndOfMonth())
     val summary = WorkingHours.summarize(state.hoursPeriods, window)
     val dateFormat = DateTimeFormatter.ofPattern("dd/MM")
-    val monthLabel =
-        month.atDay(1).format(DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault()))
+    val monthLabel = month.atDay(1).format(DateTimeFormatter.ofPattern("LLLL yyyy", Locale.ITALIAN))
     val previousMonth = stringResource(R.string.previous_month)
     val nextMonth = stringResource(R.string.next_month)
     Column(Modifier.fillMaxSize()) {
@@ -80,11 +82,6 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                 Text(
                     stringResource(R.string.hours),
                     style = MaterialTheme.typography.headlineMedium,
-                )
-                Text(
-                    stringResource(R.string.hours_note),
-                    Modifier.padding(top = 6.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (state.profile == null)
@@ -131,19 +128,40 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                             Text("›", style = MaterialTheme.typography.headlineMedium)
                         }
                     }
-                    OutlinedButton(
-                        onClick = { choosingWeek = true },
-                        Modifier.fillMaxWidth().testTag("choose_week"),
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            if (weekIndex < 0) stringResource(R.string.hours_month)
-                            else
-                                stringResource(
-                                    R.string.hours_week,
-                                    window.from.format(dateFormat),
-                                    window.until.format(dateFormat),
-                                )
-                        )
+                        FilledTonalButton(
+                            onClick = { weekIndex = -1 },
+                            modifier = Modifier.weight(1f).testTag("whole_month"),
+                            colors =
+                                ButtonDefaults.filledTonalButtonColors(
+                                    containerColor =
+                                        if (weekIndex < 0)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else MaterialTheme.colorScheme.surface
+                                ),
+                        ) {
+                            Text(stringResource(R.string.period_month))
+                        }
+                        FilledTonalButton(
+                            onClick = { choosingWeek = true },
+                            modifier = Modifier.weight(1f).testTag("choose_week"),
+                            colors =
+                                ButtonDefaults.filledTonalButtonColors(
+                                    containerColor =
+                                        if (weekIndex >= 0)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else MaterialTheme.colorScheme.surface
+                                ),
+                        ) {
+                            Text(
+                                if (weekIndex < 0) stringResource(R.string.period_week)
+                                else
+                                    "${window.from.format(dateFormat)} – ${window.until.format(dateFormat)}"
+                            )
+                        }
                     }
                 }
                 item {
@@ -170,34 +188,33 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                                     style = MaterialTheme.typography.headlineLarge,
                                 )
                             HorizontalDivider()
-                            HoursTotalLine(
-                                stringResource(R.string.hours_work),
-                                summary.workMinutes,
-                                "hours_work",
-                            )
-                            HoursTotalLine(
-                                stringResource(R.string.hours_extra),
-                                summary.extraMinutes,
-                                "hours_extra",
-                            )
-                            HoursTotalLine(
-                                stringResource(R.string.hours_night),
-                                summary.nightMinutes,
-                                "hours_night",
-                            )
-                            Text(
-                                stringResource(R.string.hours_night_note),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                HoursTotalColumn(
+                                    stringResource(R.string.hours_work),
+                                    summary.workMinutes,
+                                    "hours_work",
+                                    Modifier.weight(1f),
+                                )
+                                HoursTotalColumn(
+                                    stringResource(R.string.hours_extra),
+                                    summary.extraMinutes,
+                                    "hours_extra",
+                                    Modifier.weight(1f),
+                                )
+                                HoursTotalColumn(
+                                    stringResource(R.string.night_subset),
+                                    summary.nightMinutes,
+                                    "hours_night",
+                                    Modifier.weight(1f),
+                                )
+                            }
                         }
                     }
                 }
-                item {
-                    Text(
-                        stringResource(R.string.hours_boundary_note),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+
                 if (state.hoursLoaded && summary.entries.isEmpty())
                     item { Text(stringResource(R.string.hours_empty)) }
                 items(summary.entries, key = { it.period.id }) { entry ->
@@ -208,9 +225,47 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                             Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                IconButton(
+                                    onClick = {
+                                        if (canWriteCalendar()) editingId = period.id
+                                        else {
+                                            pendingEditId = period.id
+                                            permissions.launch(calendarPermissions.toTypedArray())
+                                        }
+                                    },
+                                    enabled = !state.busy,
+                                    modifier = Modifier.testTag("edit_${period.id}"),
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_pen),
+                                        stringResource(R.string.edit),
+                                    )
+                                }
+                                if (extra != null)
+                                    IconButton(
+                                        modifier = Modifier.testTag("delete_${period.id}"),
+                                        enabled = !state.busy,
+                                        onClick = {
+                                            if (canWriteCalendar()) deletingId = extra.id
+                                            else {
+                                                pendingDeleteId = extra.id
+                                                permissions.launch(
+                                                    calendarPermissions.toTypedArray()
+                                                )
+                                            }
+                                        },
+                                    ) {
+                                        Icon(
+                                            painterResource(R.drawable.ic_trash),
+                                            stringResource(R.string.delete),
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
+                            }
                             Text(
                                 period.date.format(
-                                    DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())
+                                    DateTimeFormatter.ofPattern("EEE d MMM", Locale.ITALIAN)
                                 ),
                                 style = MaterialTheme.typography.titleMedium,
                             )
@@ -224,11 +279,7 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                                 "${period.start} → ${period.end}",
                                 style = MaterialTheme.typography.titleLarge,
                             )
-                            if (period.end < period.start)
-                                Text(
-                                    stringResource(R.string.overnight),
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
+
                             period.endDate?.let { endDate ->
                                 if (endDate > period.date.plusDays(1))
                                     Text(
@@ -237,35 +288,6 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                                     )
                             }
                             Text(durationLabel(entry.minutes))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(
-                                    onClick = {
-                                        if (canWriteCalendar()) editingId = period.id
-                                        else {
-                                            pendingEditId = period.id
-                                            permissions.launch(calendarPermissions.toTypedArray())
-                                        }
-                                    },
-                                    enabled = !state.busy,
-                                    modifier = Modifier.testTag("edit_${period.id}"),
-                                ) {
-                                    Text(stringResource(R.string.edit))
-                                }
-                                if (extra != null)
-                                    TextButton(
-                                        onClick = {
-                                            if (canWriteCalendar()) deletingId = extra.id
-                                            else {
-                                                pendingDeleteId = extra.id
-                                                permissions.launch(
-                                                    calendarPermissions.toTypedArray()
-                                                )
-                                            }
-                                        }
-                                    ) {
-                                        Text(stringResource(R.string.delete))
-                                    }
-                            }
                         }
                     }
                 }
@@ -380,10 +402,14 @@ private fun durationLabel(minutes: Long) =
     stringResource(R.string.hours_duration, minutes / 60, minutes % 60)
 
 @Composable
-private fun HoursTotalLine(title: String, minutes: Long, tag: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, Modifier.weight(1f))
-        Text(durationLabel(minutes), Modifier.testTag(tag))
+private fun HoursTotalColumn(title: String, minutes: Long, tag: String, modifier: Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, style = MaterialTheme.typography.labelMedium)
+        Text(
+            durationLabel(minutes),
+            Modifier.testTag(tag),
+            style = MaterialTheme.typography.titleSmall,
+        )
     }
 }
 
@@ -427,9 +453,7 @@ private fun MonthDialog(month: YearMonth, onDismiss: () -> Unit, onChoose: (Year
                             Text(
                                 YearMonth.of(year, number)
                                     .atDay(1)
-                                    .format(
-                                        DateTimeFormatter.ofPattern("LLLL", Locale.getDefault())
-                                    )
+                                    .format(DateTimeFormatter.ofPattern("LLLL", Locale.ITALIAN))
                             )
                         }
                     }
@@ -450,6 +474,8 @@ private fun WorkHoursDialog(
     onDismiss: () -> Unit,
     onSave: (LocalDate, LocalTime, LocalTime) -> Unit,
 ) {
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     var date by
         rememberSaveable(previous?.id) {
             mutableStateOf(
@@ -466,6 +492,7 @@ private fun WorkHoursDialog(
         rememberSaveable(previous?.id) {
             mutableStateOf(previous?.end?.format(DateTimeFormatter.ofPattern("HH:mm")).orEmpty())
         }
+    var choosingTime by rememberSaveable { mutableStateOf<String?>(null) }
     val scheduled = previous?.source == WorkSource.SCHEDULE
     var invalid by rememberSaveable { mutableStateOf(false) }
     AlertDialog(
@@ -494,36 +521,50 @@ private fun WorkHoursDialog(
                     )
                 }
                 item {
-                    OutlinedTextField(
-                        start,
-                        {
-                            start = it
-                            invalid = false
-                        },
-                        Modifier.fillMaxWidth().testTag("extra_start"),
-                        label = { Text(stringResource(R.string.start_time)) },
-                        singleLine = true,
-                    )
-                }
-                item {
-                    OutlinedTextField(
-                        end,
-                        {
-                            end = it
-                            invalid = false
-                        },
-                        Modifier.fillMaxWidth().testTag("extra_end"),
-                        label = { Text(stringResource(R.string.end_time)) },
-                        singleLine = true,
-                    )
-                }
-                item {
-                    Text(
-                        stringResource(
-                            if (scheduled) R.string.shift_hours_help else R.string.extra_help
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedCard(
+                            onClick = {
+                                focus.clearFocus()
+                                keyboard?.hide()
+                                choosingTime = "start"
+                            },
+                            modifier = Modifier.weight(1f).testTag("extra_start"),
+                            enabled = !busy,
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(
+                                    stringResource(R.string.start_time),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                                Text(
+                                    start.ifBlank { "--:--" },
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                        OutlinedCard(
+                            onClick = {
+                                focus.clearFocus()
+                                keyboard?.hide()
+                                choosingTime = "end"
+                            },
+                            modifier = Modifier.weight(1f).testTag("extra_end"),
+                            enabled = !busy,
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(
+                                    stringResource(R.string.end_time),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                                Text(
+                                    end.ifBlank { "--:--" },
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                    }
                 }
                 if (invalid)
                     item {
@@ -572,4 +613,18 @@ private fun WorkHoursDialog(
             }
         },
     )
+    choosingTime?.let { field ->
+        TimeWheelDialog(
+            value =
+                runCatching { LocalTime.parse(if (field == "start") start else end) }
+                    .getOrDefault(LocalTime.of(8, 0)),
+            onDismiss = { choosingTime = null },
+            onChoose = { time ->
+                val formatted = time.format(DateTimeFormatter.ofPattern("HH:mm"))
+                if (field == "start") start = formatted else end = formatted
+                invalid = false
+                choosingTime = null
+            },
+        )
+    }
 }

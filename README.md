@@ -6,17 +6,17 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 ## Download e release
 
-**Shiftrail 0.5.0** include la nuova icona, ore notturne anche sui dati già salvati, sfondo personale, notifiche configurabili e adesione facoltativa alle beta future. Vedi le [note della versione](docs/releases/0.5.0.md).
+**Shiftrail 1.0.0** riorganizza Home, Ore e Impostazioni, aggiunge la scelta persistente del tema in Sfondo e usa ruote scorrevoli per modificare gli orari. Vedi le [note della versione](docs/releases/1.0.0.md) e i [dettagli della UI](docs/UI_RELEASE_1_0_0.md).
 
 [Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
 
 Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i dati. Dalla versione 0.4.0 Shiftrail controlla le nuove release a ogni ritorno nell’app: una versione successiva compatibile deve essere installata per continuare. La richiesta viene conservata anche dopo la chiusura. Il controllo manuale resta in **Impostazioni → Aggiornamenti**. Protocollo, firma e pubblicazione sono descritti in [aggiornamenti](docs/UPDATES.md).
 
-<img src="docs/images/shiftrail-home.png" alt="Home Shiftrail su Android 15" width="240"> <img src="docs/images/shiftrail-review-ready.png" alt="Revisione con letture pronte e pulsante fisso" width="240"> <img src="docs/images/shiftrail-review-large-font.png" alt="Revisione con caratteri al 160%" width="240">
+<img src="docs/images/release-1.0.0/settings.png" alt="Menu delle impostazioni Shiftrail 1.0.0" width="240"> <img src="docs/images/release-1.0.0/background-dark.png" alt="Tema scuro nelle impostazioni Sfondo" width="240"> <img src="docs/images/release-1.0.0/hours.png" alt="Ore con riepilogo mensile e modifica a icona" width="240">
 
 ## Utilizzo
 
-1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone. Scegli il calendario di destinazione, il preavviso (inizialmente 30 minuti), i colori di lavoro e riposo e se salvare le X.
+1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone. Apri **Calendario** per scegliere la destinazione, i colori di lavoro e riposo e se salvare le X.
 2. Scatta una foto o scegli un’immagine con il Photo Picker. Trascina i quattro angoli del crop mantenendo visibili nome, giorni e date.
 3. Controlla la riga scelta e le date. Se il nome è ambiguo, seleziona la riga; se l’anno manca, conferma la data del lunedì.
 4. Correggi, elimina o aggiungi celle. Usa **Mostra origine** per confrontare il contenuto. Sotto 90/100 occorre una verifica esplicita; da 90/100 incluso non compare una conferma individuale. Le celle non riconosciute richiedono correzione o eliminazione.
@@ -30,9 +30,9 @@ Home e Ore usano la stessa lettura degli eventi collegati al calendario. Home el
 
 In **Ore**, sotto **Extra**, **Ore notturne** indica i minuti lavorati dalle 00:00 alle 06:00, extra inclusi e senza sovrapposizioni. È una quota del totale, non un’aggiunta. `24:00` è accettato come alias di `00:00` negli orari.
 
-In **Impostazioni → Sfondo dell’app** puoi scegliere una foto personale o ripristinare lo sfondo predefinito. La modifica si applica subito; l’immagine viene ridimensionata e conservata nella memoria privata dell’app.
+In **Impostazioni → Sfondo** puoi scegliere il tema **Chiaro**, **Scuro** o **Segui il sistema**, oltre a una foto personale o allo sfondo predefinito. La modifica si applica subito; l’immagine viene ridimensionata e conservata nella memoria privata dell’app.
 
-In **Impostazioni → Notifiche dell’app** puoi abilitare un avviso prima del lavoro, impostare ore e minuti di anticipo e scegliere suono e vibrazione. Premi **Salva** per applicare. Le notifiche sono inizialmente disattivate e distinte dai promemoria del calendario. Android può richiedere il permesso per notifiche e avvisi precisi; senza quest’ultimo il promemoria può arrivare in ritardo. Dettagli e limiti in [notifiche e sfondo](docs/PERSONALIZATION_NOTIFICATIONS.md).
+In **Impostazioni → Notifiche** puoi abilitare un avviso prima del lavoro, impostare ore e minuti di anticipo e scegliere suono e vibrazione. Premi **Salva** per applicare. Le notifiche sono inizialmente disattivate e distinte dai promemoria del calendario. Android può richiedere il permesso per notifiche e avvisi precisi; senza quest’ultimo il promemoria può arrivare in ritardo. Dettagli e limiti in [notifiche e sfondo](docs/PERSONALIZATION_NOTIFICATIONS.md).
 
 Il nome resta **Shiftrail**. La nuova icona adattiva usa una S a forma di percorso e include una variante monocromatica per la barra di stato. I launcher compatibili mostrano il pallino quando è presente una notifica attiva. In **Impostazioni → Aggiornamenti** puoi aderire alla beta: le prerelease sono facoltative e vengono proposte solo a chi aderisce al canale. Uscire conserva i dati e torna a cercare soltanto versioni stabili, senza downgrade automatici. Vedi [branding](docs/BRANDING.md) e [canali di aggiornamento](docs/UPDATES.md).
 

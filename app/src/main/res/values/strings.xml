@@ -165,8 +165,8 @@
     <string name="edit_shift_hours">Modifica orario turno</string>
     <string name="shift_hours_help">Salva aggiorna anche il turno nel calendario e ricalcola le ore. Se la fine precede l’inizio, il turno termina il giorno successivo.</string>
     <string name="extra_work">Lavoro extra</string>
-    <string name="start_time">Inizio (HH:MM)</string>
-    <string name="end_time">Fine (HH:MM)</string>
+    <string name="start_time">Inizio</string>
+    <string name="end_time">Fine</string>
     <string name="extra_help">Se la fine precede l’inizio, il lavoro termina il giorno successivo. Gli extra aggiornano l’orario in home e nel calendario, anche per date passate.</string>
     <string name="extra_calendar_conflict">Il turno è stato modificato o spostato nel calendario. Controlla l’orario di base in Ore prima di modificare gli extra.</string>
     <string name="extra_invalid">Inserisci una data valida e due orari diversi nel formato HH:MM.</string>
@@ -196,12 +196,12 @@
     <string name="update_install_failed">Non riesco ad aprire l’installazione. Controlla l’autorizzazione di Shiftrail a installare app e riprova.</string>
     <string name="hours_night">Ore notturne</string>
     <string name="hours_night_note">Dalle 00:00 (24:00) alle 06:00, extra inclusi. Queste ore sono già comprese nel totale.</string>
-    <string name="background_title">Sfondo dell’app</string>
+    <string name="background_title">Sfondo</string>
     <string name="background_note">Scegli una foto per lo sfondo. La copia resta sul dispositivo e si applica subito. Una velatura mantiene leggibili i testi.</string>
     <string name="background_choose">Scegli immagine</string>
     <string name="background_reset">Ripristina sfondo predefinito</string>
     <string name="background_failed">Non riesco a leggere o salvare lo sfondo. Scegli un’altra immagine; lo sfondo precedente viene mantenuto.</string>
-    <string name="notifications_title">Notifiche dell’app</string>
+    <string name="notifications_title">Notifiche</string>
     <string name="notifications_enable">Avvisami prima del lavoro</string>
     <string name="notifications_note">Un avviso per ogni giornata di lavoro salvata, con data e orario aggiornati, anche per gli extra. Le X non generano notifiche. Premi Salva per applicare. I promemoria del calendario restano separati: disattivali sopra se ricevi avvisi doppi.</string>
     <string name="notification_hours">Ore prima</string>
@@ -225,4 +225,21 @@
     <string name="beta_optional">Questa beta è facoltativa. Puoi continuare a usare l’app e uscire dal programma quando vuoi.</string>
     <string name="beta_download">Scarica beta</string>
     <string name="beta_check_failed">Non riesco a controllare le beta. Le verifiche della versione stabile e le funzioni locali restano disponibili. Riprova più tardi.</string>
+    <string name="calendar_menu_summary">Destinazione, riposi e colori</string>
+    <string name="background_menu_summary">Tema e immagine personale</string>
+    <string name="notification_menu_summary">Attivazione e anticipo</string>
+    <string name="update_menu_summary">Versione e accesso alla beta</string>
+    <string name="app_theme">Tema dell’app</string>
+    <string name="theme_system">Segui il sistema</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
+    <string name="choose_time">Scegli orario</string>
+    <string name="confirm">Conferma</string>
+    <string name="time_hours">Ore</string>
+    <string name="time_minutes">Minuti</string>
+    <string name="notification_advance">Avvisami prima dell’evento</string>
+    <string name="next_shift">Il prossimo turno</string>
+    <string name="period_month">Mese</string>
+    <string name="period_week">Settimana</string>
+    <string name="night_subset">Di cui notturne</string>
 </resources>

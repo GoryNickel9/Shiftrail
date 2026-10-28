@@ -39,6 +39,7 @@ class BetaUiTest {
             compose.onNodeWithTag("required_update").assertDoesNotExist()
             compose.onNodeWithText("Ore").assertIsDisplayed()
             compose.onNodeWithText("Impostazioni").performClick()
+            compose.onNodeWithTag("menu_updates").performScrollTo().performClick()
             compose
                 .onNode(hasScrollToIndexAction())
                 .performScrollToNode(hasTestTag("beta_available"))

@@ -53,6 +53,7 @@ data class AppState(
     val hoursCalendarAvailable: Boolean = false,
     val updater: UpdateState = UpdateState(),
     val background: Bitmap? = null,
+    val theme: AppTheme = AppTheme.SYSTEM,
 )
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -60,16 +61,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val dao = app.database.dao()
     private val images = ImageProcessor(app)
     private val backgrounds = AppBackground(app)
+    private val appearance = AppAppearance(app)
     private val extractor: ScheduleExtractor = LocalScheduleExtractor(images)
     private val mutable =
         MutableStateFlow(
             AppState(
+                theme = appearance.theme(),
                 updater =
                     UpdateState(
                         release = app.updater.requiredUpdate(),
                         betaEnabled = app.updater.betaEnabled(),
                         betaRelease = app.updater.betaUpdate(),
-                    )
+                    ),
             )
         )
     val state = mutable.asStateFlow()
@@ -506,6 +509,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         mutable.update { it.copy(profile = profile, settings = savedSettings) }
         watch(profile.id)
         onSaved()
+    }
+
+    fun setTheme(theme: AppTheme) = launchWork {
+        appearance.save(theme)
+        mutable.update { it.copy(theme = theme) }
     }
 
     fun setBackground(uri: Uri?) = launchWork {

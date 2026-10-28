@@ -75,7 +75,16 @@ fun TurniApp(vm: AppViewModel) {
         }
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: "home"
-    ShiftrailTheme {
+    val darkTheme = state.theme.isDark(androidx.compose.foundation.isSystemInDarkTheme())
+    SideEffect {
+        (context as? android.app.Activity)?.window?.let { window ->
+            androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
+    ShiftrailTheme(darkTheme = darkTheme) {
         if (!state.busy && state.updater.release != null) {
             Surface(Modifier.fillMaxSize()) {
                 RequiredUpdateScreen(state.updater, vm::downloadUpdate, vm::installUpdate) {
@@ -88,9 +97,29 @@ fun TurniApp(vm: AppViewModel) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(stringResource(R.string.app_name)) },
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                painterResource(R.drawable.shiftrail_mark),
+                                null,
+                                Modifier.size(32.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.shapes.small,
+                                    ),
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                            )
+                            Text(
+                                stringResource(R.string.app_name),
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                        }
+                    },
                     navigationIcon = {
-                        if (route != "home")
+                        if (route !in listOf("home", "hours", "settings"))
                             IconButton(
                                 onClick = {
                                     if (route == "crop") {
@@ -126,11 +155,18 @@ fun TurniApp(vm: AppViewModel) {
                         listOf(
                                 Triple("home", R.string.home, R.drawable.ic_calendar),
                                 Triple("hours", R.string.hours, R.drawable.ic_hours),
-                                Triple("settings", R.string.settings, R.drawable.ic_profile),
+                                Triple("settings", R.string.settings, R.drawable.ic_settings),
                             )
                             .forEach { (destination, label, icon) ->
                                 NavigationBarItem(
                                     selected = route == destination,
+                                    colors =
+                                        NavigationBarItemDefaults.colors(
+                                            indicatorColor =
+                                                MaterialTheme.colorScheme.primaryContainer,
+                                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                                        ),
                                     enabled = !state.busy,
                                     onClick = {
                                         if (route != destination)
