@@ -42,7 +42,7 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit) {
             ExtractionIssue.DATE_CONFIRMATION to R.string.date_confirmation,
             ExtractionIssue.INVALID_DATES to R.string.invalid_dates,
         )
-    val pending = result.cells.count { it.requiresCalendarReview(state.settings.saveRestDays) }
+    val pending = result.cells.count { it.requiresCalendarReview(false) }
     val ready =
         result.selected != null &&
             result.issues.isEmpty() &&
@@ -133,7 +133,7 @@ fun ReviewScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit) {
             itemsIndexed(result.cells, key = { _, cell -> cell.date.toString() }) { index, cell ->
                 ReviewCellCard(
                     cell,
-                    saveRestDays = state.settings.saveRestDays,
+                    saveRestDays = false,
                     onEdit = { editing = index },
                     onDelete = { deleting = index },
                     onAcknowledge = { vm.acknowledge(index) },
@@ -302,13 +302,6 @@ private fun ReviewCellCard(
                     if (cell.type == CellType.UNKNOWN) MaterialTheme.typography.bodyLarge
                     else MaterialTheme.typography.headlineSmall,
             )
-            if (cell.type == CellType.CODE)
-                Text(
-                    stringResource(
-                        if (saveRestDays) R.string.rest_day_note else R.string.rest_day_excluded
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                )
             if (pending || details) {
                 cell.ocrOriginal?.let {
                     Text(

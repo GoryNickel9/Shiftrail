@@ -225,7 +225,10 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                             Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                Modifier.fillMaxWidth().testTag("hours_actions_${period.id}"),
+                                horizontalArrangement = Arrangement.End,
+                            ) {
                                 IconButton(
                                     onClick = {
                                         if (canWriteCalendar()) editingId = period.id
@@ -312,43 +315,10 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
             choosingMonth = false
         }
     if (choosingWeek)
-        AlertDialog(
-            onDismissRequest = { choosingWeek = false },
-            title = { Text(stringResource(R.string.hours)) },
-            text = {
-                Column {
-                    TextButton(
-                        onClick = {
-                            weekIndex = -1
-                            choosingWeek = false
-                        }
-                    ) {
-                        Text(stringResource(R.string.hours_month))
-                    }
-                    weeks.forEachIndexed { index, week ->
-                        TextButton(
-                            onClick = {
-                                weekIndex = index
-                                choosingWeek = false
-                            }
-                        ) {
-                            Text(
-                                stringResource(
-                                    R.string.hours_week,
-                                    week.from.format(dateFormat),
-                                    week.until.format(dateFormat),
-                                )
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { choosingWeek = false }) {
-                    Text(stringResource(R.string.close))
-                }
-            },
-        )
+        WeekPicker(month, weekIndex, state.hoursPeriods, { choosingWeek = false }) {
+            weekIndex = it
+            choosingWeek = false
+        }
     if (adding || editing != null)
         WorkHoursDialog(
             editing,

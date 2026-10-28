@@ -57,6 +57,11 @@ class ShiftNotificationsTest {
             assertTrue(preferences.getStringSet("scheduled", emptySet())!!.contains(futureKey))
             val dueKey = workReminders(listOf(due.period()), 0, ZoneId.systemDefault()).single().key
             app.notifications.refresh(dueKey)
+            val deliveryDeadline = System.currentTimeMillis() + 5000
+            while (
+                manager.activeNotifications.none { it.tag == dueKey } &&
+                    System.currentTimeMillis() < deliveryDeadline
+            ) delay(50)
             assertEquals(1, manager.activeNotifications.count { it.tag == dueKey })
             val delivered = manager.activeNotifications.single { it.tag == dueKey }
             assertEquals("Lavoro", delivered.notification.extras.getString("android.title"))

@@ -55,8 +55,6 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
     var name by rememberSaveable { mutableStateOf(state.profile?.name.orEmpty()) }
     val reminder = state.settings.reminderMinutes
     var workColor by rememberSaveable { mutableStateOf(state.settings.eventColor) }
-    var restColor by rememberSaveable { mutableStateOf(state.settings.restColor) }
-    var saveRestDays by rememberSaveable { mutableStateOf(state.settings.saveRestDays) }
     var invalid by rememberSaveable { mutableStateOf(false) }
     var choosingColor by rememberSaveable { mutableIntStateOf(0) }
     var notificationsEnabled by rememberSaveable {
@@ -130,7 +128,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                     item {
                         SettingChoice(
                             stringResource(R.string.calendar_preferences),
-                            stringResource(R.string.calendar_menu_summary),
+                            "",
                             "menu_calendar",
                             icon = R.drawable.ic_calendar,
                         ) {
@@ -141,7 +139,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                     item {
                         SettingChoice(
                             stringResource(R.string.background_title),
-                            stringResource(R.string.background_menu_summary),
+                            "",
                             "menu_background",
                             icon = R.drawable.ic_image,
                         ) {
@@ -152,7 +150,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                     item {
                         SettingChoice(
                             stringResource(R.string.notifications_title),
-                            stringResource(R.string.notification_menu_summary),
+                            "",
                             "menu_notifications",
                             icon = R.drawable.ic_bell,
                         ) {
@@ -163,7 +161,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                     item {
                         SettingChoice(
                             stringResource(R.string.updates),
-                            stringResource(R.string.update_menu_summary),
+                            "",
                             "menu_updates",
                             icon = R.drawable.ic_update,
                         ) {
@@ -178,7 +176,9 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                             state.calendars.firstOrNull { it.id == state.settings.calendarId }
                         SettingChoice(
                             stringResource(R.string.choose_calendar),
-                            calendar?.let { "${it.name}\n${it.account}" }
+                            calendar?.let {
+                                "${calendarName(it)}\n${calendarService(it)}${if (it.localOnly || it.account.isBlank()) "" else "\n${it.account}"}"
+                            }
                                 ?: stringResource(
                                     if (state.settings.calendarId == null)
                                         R.string.calendar_not_selected
@@ -196,25 +196,6 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                             )
                     }
                     item {
-                        Card(Modifier.fillMaxWidth()) {
-                            Row(
-                                Modifier.fillMaxWidth().padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    stringResource(R.string.save_rest_days),
-                                    Modifier.weight(1f),
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                                Switch(
-                                    saveRestDays,
-                                    { saveRestDays = it },
-                                    Modifier.testTag("save_rest_days"),
-                                )
-                            }
-                        }
-                    }
-                    item {
                         SettingChoice(
                             stringResource(R.string.work_color),
                             colorLabel(workColor),
@@ -223,17 +204,6 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                         ) {
                             focus.clearFocus()
                             choosingColor = 1
-                        }
-                    }
-                    item {
-                        SettingChoice(
-                            stringResource(R.string.rest_color),
-                            colorLabel(restColor),
-                            "rest_color",
-                            restColor,
-                        ) {
-                            focus.clearFocus()
-                            choosingColor = 2
                         }
                     }
                 }
@@ -347,8 +317,8 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                             state.settings.copy(
                                 reminderMinutes = reminder,
                                 eventColor = workColor,
-                                restColor = restColor,
-                                saveRestDays = saveRestDays,
+                                restColor = state.settings.restColor,
+                                saveRestDays = false,
                                 notificationsEnabled = notificationsEnabled,
                                 notificationMinutes =
                                     if (validNotificationTime)
@@ -363,7 +333,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
             )
     }
     if (choosingColor != 0) {
-        val selected = if (choosingColor == 1) workColor else restColor
+        val selected = workColor
         val choices = (listOf<Int?>(null) + eventColors.map { it.first } + selected).distinct()
         AlertDialog(
             onDismissRequest = { choosingColor = 0 },
@@ -379,7 +349,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                     items(choices) { color ->
                         TextButton(
                             onClick = {
-                                if (choosingColor == 1) workColor = color else restColor = color
+                                workColor = color
                                 choosingColor = 0
                             },
                             Modifier.fillMaxWidth(),
@@ -429,13 +399,14 @@ private fun SettingChoice(
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    value,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color =
-                        if (icon == null) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (value.isNotBlank())
+                    Text(
+                        value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color =
+                            if (icon == null) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
             }
             color?.let { Box(Modifier.size(28.dp).background(Color(it), CircleShape)) }
             Icon(

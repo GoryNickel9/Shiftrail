@@ -6,29 +6,29 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 ## Download e release
 
-**Shiftrail 1.0.0** riorganizza Home, Ore e Impostazioni, aggiunge la scelta persistente del tema in Sfondo e usa ruote scorrevoli per modificare gli orari. Vedi le [note della versione](docs/releases/1.0.0.md) e i [dettagli della UI](docs/UI_RELEASE_1_0_0.md).
+**Shiftrail 1.0.1** introduce il pannello delle settimane, calendari raggruppati per account, identificazione dell’app di apertura e dicitura Straordinari. Esclude i nuovi riposi dal calendario e semplifica il risultato del salvataggio. Vedi le [note della versione](docs/releases/1.0.1.md) e i [dettagli tecnici](docs/UI_RELEASE_1_0_1.md).
 
 [Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
 
 Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i dati. Dalla versione 0.4.0 Shiftrail controlla le nuove release a ogni ritorno nell’app: una versione successiva compatibile deve essere installata per continuare. La richiesta viene conservata anche dopo la chiusura. Il controllo manuale resta in **Impostazioni → Aggiornamenti**. Protocollo, firma e pubblicazione sono descritti in [aggiornamenti](docs/UPDATES.md).
 
-<img src="docs/images/release-1.0.0/settings.png" alt="Menu delle impostazioni Shiftrail 1.0.0" width="240"> <img src="docs/images/release-1.0.0/background-dark.png" alt="Tema scuro nelle impostazioni Sfondo" width="240"> <img src="docs/images/release-1.0.0/hours.png" alt="Ore con riepilogo mensile e modifica a icona" width="240">
+<img src="docs/images/release-1.0.1/settings.png" alt="Menu delle impostazioni Shiftrail 1.0.1" width="240"> <img src="docs/images/release-1.0.1/background-dark.png" alt="Tema scuro nelle impostazioni Sfondo" width="240"> <img src="docs/images/release-1.0.1/hours-month.png" alt="Ore con riepilogo mensile e modifica a icona" width="240">
 
 ## Utilizzo
 
-1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone. Apri **Calendario** per scegliere la destinazione, i colori di lavoro e riposo e se salvare le X.
+1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone. Apri **Calendario** per scegliere la destinazione e il colore dei turni di lavoro.
 2. Scatta una foto o scegli un’immagine con il Photo Picker. Trascina i quattro angoli del crop mantenendo visibili nome, giorni e date.
 3. Controlla la riga scelta e le date. Se il nome è ambiguo, seleziona la riga; se l’anno manca, conferma la data del lunedì.
 4. Correggi, elimina o aggiungi celle. Usa **Mostra origine** per confrontare il contenuto. Sotto 90/100 occorre una verifica esplicita; da 90/100 incluso non compare una conferma individuale. Le celle non riconosciute richiedono correzione o eliminazione.
 5. Verifica il piano di sincronizzazione: viene usato il calendario scelto nelle Impostazioni o nell’ultima importazione. La scelta ricompare solo se manca una destinazione utilizzabile. Ogni voce mostra nome, account e stato; per un calendario nascosto o disattivato conferma **Attiva e usa**. Le nuove celle sono preselezionate; aggiornamenti ed eliminazioni richiedono una scelta.
 
-`19-01` produce un evento **Lavoro** dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e, se abilitata nelle impostazioni, produce un evento di intera giornata intitolato **Giorno di riposo**. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
+`19-01` produce un evento **Lavoro** dalle 19:00 alle 01:00 del giorno seguente. `X` è l’unica lettera ammessa e identifica il riposo nella lettura; dalla 1.0.1 non viene aggiunta al calendario. Altre lettere richiedono correzione. Numeri isolati come `6` non diventano turni.
 
 **Ore** mostra il totale di un mese o di una sua settimana, distinguendo gli eventi associati dal lavoro extra. Le modifiche fatte direttamente nel Calendario aggiornano automaticamente gli orari e i totali, anche al ritorno nell’app. Ogni turno mostra inizio e fine modificabili: salvare da Shiftrail aggiorna anche l’evento nel calendario. L’extra si inserisce con data, inizio e fine, anche per date passate. Aggiorna l’orario complessivo in home e nel calendario: un turno 16–18 con extra 13–16 e 18–20 diventa 13–20, per un totale di 7 ore. Modificare o eliminare un extra ricalcola l’orario mantenendo il turno di base. I turni notturni sono suddivisi a mezzanotte quando attraversano il confine del periodo. Le ore derivano dal calendario, non da una rilevazione delle presenze; senza il permesso di lettura l’app mostra il programma salvato con un avviso. Vedi [conteggio ore](docs/WORKING_HOURS.md).
 
 Home e Ore usano la stessa lettura degli eventi collegati al calendario. Home elenca i turni futuri senza il precedente taglio a 14 righe; Ore li filtra per mese o settimana. Le importazioni ripetute dello stesso giorno in calendari diversi vengono risolte prima di costruire entrambe le viste.
 
-In **Ore**, sotto **Extra**, **Ore notturne** indica i minuti lavorati dalle 00:00 alle 06:00, extra inclusi e senza sovrapposizioni. È una quota del totale, non un’aggiunta. `24:00` è accettato come alias di `00:00` negli orari.
+In **Ore**, accanto a **Straordinari**, **Ore notturne** indica i minuti lavorati dalle 00:00 alle 06:00, extra inclusi e senza sovrapposizioni. È una quota del totale, non un’aggiunta. `24:00` è accettato come alias di `00:00` negli orari.
 
 In **Impostazioni → Sfondo** puoi scegliere il tema **Chiaro**, **Scuro** o **Segui il sistema**, oltre a una foto personale o allo sfondo predefinito. La modifica si applica subito; l’immagine viene ridimensionata e conservata nella memoria privata dell’app.
 

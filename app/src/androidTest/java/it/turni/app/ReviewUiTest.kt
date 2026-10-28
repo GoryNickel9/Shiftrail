@@ -74,7 +74,7 @@ class ReviewUiTest {
             }
             compose
                 .onNodeWithText("I riposi sono esclusi dal calendario nelle impostazioni.")
-                .assertIsDisplayed()
+                .assertDoesNotExist()
             compose.onNodeWithText("Ho controllato: è corretto").assertDoesNotExist()
             compose.onNodeWithText("Continua").assertIsEnabled()
             compose.runOnIdle {

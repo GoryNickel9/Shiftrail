@@ -307,7 +307,14 @@ fun TurniApp(vm: AppViewModel) {
                                 verticalArrangement = Arrangement.Center,
                             ) {
                                 CircularProgressIndicator()
-                                Text(stringResource(R.string.processing), Modifier.padding(16.dp))
+                                Text(
+                                    stringResource(
+                                        if (state.analyzing) R.string.analysis_in_progress
+                                        else R.string.processing
+                                    ),
+                                    Modifier.padding(16.dp),
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
                             }
                         }
                     }

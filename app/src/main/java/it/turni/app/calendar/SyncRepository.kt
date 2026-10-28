@@ -20,6 +20,8 @@ data class PreparedSync(
     val saved: List<ShiftEntity>,
 )
 
+data class SyncCommitResult(val changed: Int, val added: Int)
+
 class SyncRepository(private val db: TurniDatabase, private val calendar: CalendarRepository) {
     private val mutex = Mutex()
 
@@ -288,6 +290,14 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
                 existing += id
                 val provider = calendar.event(id)
                 val incoming = expandedEvents.firstOrNull { it.date == cell.date }
+                // Existing rest events are preserved; disabling rest never silently deletes them.
+                if (
+                    options?.saveRestDays == false &&
+                        incoming == null &&
+                        provider?.allDay == true &&
+                        provider.title == EventFactory.REST_EVENT_TITLE
+                )
+                    continue
                 // If Room was not committed, force an update of the recovered event to canonical
                 // values.
                 val unchanged =
@@ -307,13 +317,22 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
                         id,
                         calendarId,
                     )
-            } else if (old != null) recovered += old.saved()
+            } else if (
+                old != null &&
+                    !(options?.saveRestDays == false &&
+                        old.code == ShiftParser.REST_CODE &&
+                        old.type == CellType.CODE.name)
+            )
+                recovered += old.saved()
         }
         val changes = SyncPlanner.plan(expandedEvents, recovered, calendarId, existing)
         return PreparedSync(employee, monday, calendarId, hash, cells, changes, saved)
     }
 
-    suspend fun commit(plan: PreparedSync, selected: Set<LocalDate>) = mutex.withLock {
+    suspend fun commit(plan: PreparedSync, selected: Set<LocalDate>): Int =
+        commitWithReceipt(plan, selected).changed
+
+    suspend fun commitWithReceipt(plan: PreparedSync, selected: Set<LocalDate>) = mutex.withLock {
         val changes = plan.changes.filter { it.date in selected && it.kind != ChangeKind.UNCHANGED }
         val mutations = changes.map {
             CalendarMutation(
@@ -323,7 +342,8 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
                 eventMarker(plan.employee, it.date, plan.calendar),
             )
         }
-        val ids = calendar.apply(plan.calendar, mutations, requireVisible = true)
+        val receipt = calendar.applyWithReceipt(plan.calendar, mutations, requireVisible = true)
+        val ids = receipt.ids
         calendar.verifyInstances(
             plan.calendar,
             plan.changes
@@ -371,6 +391,6 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
                 }
             }
         }
-        changes.size
+        SyncCommitResult(changes.size, receipt.added)
     }
 }

@@ -8,7 +8,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import it.turni.app.R
 import it.turni.app.calendar.WritableCalendar
@@ -59,46 +62,112 @@ fun CalendarScreen(
             },
         )
     }
-    LazyColumn(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val viewer = calendarViewerLabel()
+    val groups =
+        state.calendars.groupBy {
+            Triple(
+                if (it.localOnly) "" else it.accountType,
+                if (it.localOnly) "" else it.account,
+                it.localOnly,
+            )
+        }
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         item {
             if (importing) ImportProgress(3)
             Text(
                 stringResource(R.string.choose_calendar),
                 style = MaterialTheme.typography.headlineMedium,
             )
-            Text(stringResource(R.string.calendar_help))
             if (
                 state.settings.calendarId != null &&
                     preferredCalendar(state.calendars, state.settings.calendarId) == null
             )
                 Text(stringResource(R.string.calendar_preferred_unavailable))
-            OutlinedButton(onClick = onRetry, enabled = !state.busy) {
+            OutlinedCard(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        stringResource(R.string.calendar_viewer),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    Text(viewer, style = MaterialTheme.typography.titleMedium)
+                }
+            }
+            TextButton(onClick = onRetry, enabled = !state.busy) {
                 Text(stringResource(R.string.calendar_refresh))
             }
         }
-        if (state.calendars.isEmpty())
-            item {
-                Text(stringResource(R.string.no_calendar))
+        if (state.calendars.isEmpty()) item { Text(stringResource(R.string.no_calendar)) }
+        groups.values.forEach { calendars ->
+            val first = calendars.first()
+            item(key = "account_${first.id}") {
+                Column(
+                    Modifier.padding(top = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(calendarService(first), style = MaterialTheme.typography.titleMedium)
+                    if (!first.localOnly && first.account.isNotBlank())
+                        Text(first.account, style = MaterialTheme.typography.bodyMedium)
+                    if (first.localOnly)
+                        Text(
+                            stringResource(R.string.calendar_local_short),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                }
             }
-        items(state.calendars, key = { it.id }) { calendar ->
-            Card(
-                onClick = { choose(calendar) },
-                Modifier.fillMaxWidth(),
-                enabled = calendar.writable && !state.busy,
-            ) {
-                Row(Modifier.padding(16.dp)) {
-                    RadioButton(
-                        selected = state.settings.calendarId == calendar.id,
-                        onClick = { choose(calendar) },
-                        enabled = calendar.writable && !state.busy,
-                    )
-                    Column {
-                        Text(calendar.name, style = MaterialTheme.typography.titleMedium)
-                        Text(calendar.account)
-                        if (calendar.localOnly) Text(stringResource(R.string.calendar_local_only))
-                        if (!calendar.writable) Text(stringResource(R.string.calendar_read_only))
-                        if (!calendar.visible) Text(stringResource(R.string.calendar_hidden))
-                        if (!calendar.syncEnabled) Text(stringResource(R.string.calendar_sync_off))
+            items(calendars, key = { it.id }) { calendar ->
+                OutlinedCard(
+                    onClick = { choose(calendar) },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .testTag("calendar_option_${calendar.id}")
+                            .semantics { selected = state.settings.calendarId == calendar.id },
+                    enabled = calendar.writable && !state.busy,
+                    colors =
+                        CardDefaults.outlinedCardColors(
+                            containerColor =
+                                if (state.settings.calendarId == calendar.id)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surface
+                        ),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        RadioButton(
+                            selected = state.settings.calendarId == calendar.id,
+                            onClick = null,
+                            enabled = calendar.writable && !state.busy,
+                        )
+                        Column(
+                            Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                calendarName(calendar),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            if (!calendar.writable)
+                                Text(
+                                    stringResource(R.string.calendar_read_only_short),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            if (!calendar.visible)
+                                Text(
+                                    stringResource(R.string.calendar_hidden),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            if (!calendar.syncEnabled)
+                                Text(
+                                    stringResource(R.string.calendar_sync_off),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                        }
                     }
                 }
             }
@@ -125,9 +194,9 @@ fun SyncScreen(state: AppState, vm: AppViewModel, synchronize: () -> Unit) {
                 state.calendars
                     .firstOrNull { it.id == plan.calendar }
                     ?.let { calendar ->
-                        Text(calendar.name, style = MaterialTheme.typography.titleMedium)
-                        Text(calendar.account)
-                        if (calendar.localOnly) Text(stringResource(R.string.calendar_local_only))
+                        OutlinedCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp)) { CalendarDestination(calendar) }
+                        }
                     }
             }
             items(plan.changes, key = { it.date.toString() }) { change ->

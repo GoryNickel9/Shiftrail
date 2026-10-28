@@ -1,10 +1,7 @@
 package it.turni.app
 
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -44,14 +41,8 @@ class UiSmokeTest {
         compose.onNodeWithTag("menu_calendar").performScrollTo().performClick()
         scrollToSetting("work_color").performClick()
         compose.onNode(hasText("Viola") and hasAnyAncestor(isDialog())).performClick()
-        scrollToSetting("rest_color").performClick()
-        compose.onNode(hasText("Arancione") and hasAnyAncestor(isDialog())).performClick()
-        val restSwitch = scrollToSetting("save_rest_days")
-        if (
-            restSwitch.fetchSemanticsNode().config[SemanticsProperties.ToggleableState] ==
-                ToggleableState.On
-        )
-            restSwitch.performClick()
+        compose.onNodeWithTag("rest_color").assertDoesNotExist()
+        compose.onNodeWithTag("save_rest_days").assertDoesNotExist()
         compose.onNodeWithText("Salva").assertIsDisplayed().performClick()
         compose.waitUntil(10000) {
             compose
@@ -65,9 +56,8 @@ class UiSmokeTest {
         compose.onNodeWithTag("menu_calendar").performScrollTo().performClick()
         scrollToSetting("work_color")
         compose.onNodeWithText("Viola").assertIsDisplayed()
-        scrollToSetting("rest_color")
-        compose.onNodeWithText("Arancione").assertIsDisplayed()
-        scrollToSetting("save_rest_days").assertIsOff()
+        compose.onNodeWithTag("rest_color").assertDoesNotExist()
+        compose.onNodeWithTag("save_rest_days").assertDoesNotExist()
         compose.onNodeWithText("Home").performClick()
         compose.activityRule.scenario.recreate()
         compose.waitUntil(10000) {

@@ -155,7 +155,7 @@ class HoursUiTest {
             compose.onNodeWithTag("hours_work").assertTextEquals("8 h 00 min")
             compose.onNodeWithTag("hours_extra").assertTextEquals("0 h 00 min")
             compose.onNodeWithTag("hours_night").assertTextEquals("3 h 00 min")
-            compose.onNodeWithText("Aggiungi lavoro extra").performClick()
+            compose.onNodeWithText("Aggiungi straordinari").performClick()
             compose.onNodeWithTag("extra_date").performTextClearance()
             compose.onNodeWithTag("extra_date").performTextInput(month.atDay(8).toString())
             compose.selectTime("extra_start", "22:00")
@@ -181,7 +181,8 @@ class HoursUiTest {
             compose.onNodeWithTag("extra_start").assertTextContains("22:30")
             compose.onNodeWithText("Salva").performClick()
             compose.waitUntil(15000) {
-                compose.onAllNodesWithText("Modifica lavoro extra").fetchSemanticsNodes().isEmpty()
+                readyViewModel.state.value.error?.let { throw AssertionError("Save overtime: $it") }
+                compose.onAllNodesWithText("Modifica straordinari").fetchSemanticsNodes().isEmpty()
             }
             compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
             waitForTotal("10 h 30 min")
@@ -189,15 +190,13 @@ class HoursUiTest {
             compose.onNodeWithTag("choose_week").performClick()
             val week = WorkingHours.monthWeeks(month).first()
             val format = DateTimeFormatter.ofPattern("dd/MM")
-            compose
-                .onNodeWithText(
-                    "Settimana ${week.from.format(format)} – ${week.until.format(format)}"
-                )
-                .performClick()
+            compose.onNodeWithTag("week_option_0").performScrollTo().performClick()
+            compose.onNodeWithText("Mostra settimana").performClick()
             waitForTotal(if (week.until.dayOfMonth >= 5) "8 h 00 min" else "2 h 00 min")
             saveScreenshot("hours-week.png")
             compose.onNodeWithTag("choose_week").performClick()
             compose.onNodeWithText("Tutto il mese").performClick()
+            compose.onNodeWithText("Mostra mese").performClick()
             waitForTotal("10 h 30 min")
             compose.onNodeWithTag("previous_month").performClick()
             waitForTotal("1 h 00 min")
@@ -212,7 +211,7 @@ class HoursUiTest {
                 .onNode(hasScrollToIndexAction())
                 .performScrollToNode(hasContentDescription("Elimina"))
             compose.onNodeWithContentDescription("Elimina").performClick()
-            compose.onNodeWithText("Eliminare il lavoro extra?").assertIsDisplayed()
+            compose.onNodeWithText("Eliminare gli straordinari?").assertIsDisplayed()
             compose.onNodeWithTag("extra_delete_confirm").performClick()
             compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
             waitForTotal("8 h 00 min")
@@ -220,12 +219,9 @@ class HoursUiTest {
                 runBlocking { dao.findExtra(employee, month.atDay(8).toString(), "22:30", "01:00") }
             )
             compose.onNodeWithTag("choose_week").performClick()
-            compose
-                .onNodeWithText(
-                    "Settimana ${week.from.format(format)} – ${week.until.format(format)}"
-                )
-                .performClick()
-            compose.onNodeWithText("Aggiungi lavoro extra").performClick()
+            compose.onNodeWithTag("week_option_0").performScrollTo().performClick()
+            compose.onNodeWithText("Mostra settimana").performClick()
+            compose.onNodeWithText("Aggiungi straordinari").performClick()
             compose.onNodeWithTag("extra_date").performTextClearance()
             compose
                 .onNodeWithTag("extra_date")

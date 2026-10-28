@@ -23,6 +23,7 @@ data class WritableCalendar(
     val visible: Boolean = true,
     val syncEnabled: Boolean = true,
     val writable: Boolean = true,
+    val accountType: String = "",
 )
 
 data class ProviderEvent(
@@ -47,6 +48,8 @@ data class CalendarMutation(
     val oldId: Long?,
     val marker: String,
 )
+
+data class CalendarWriteResult(val ids: Map<java.time.LocalDate, Long?>, val added: Int)
 
 class CalendarRepository(private val resolver: ContentResolver) {
     fun changes() = callbackFlow {
@@ -100,6 +103,7 @@ class CalendarRepository(private val resolver: ContentResolver) {
                                     cursor.getInt(6) == 1,
                                     cursor.getInt(7) >=
                                         CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR,
+                                    accountType = cursor.getString(4).orEmpty(),
                                 )
                             )
                         }
@@ -206,7 +210,13 @@ class CalendarRepository(private val resolver: ContentResolver) {
         calendar: Long,
         mutations: List<CalendarMutation>,
         requireVisible: Boolean = false,
-    ): Map<java.time.LocalDate, Long?> =
+    ): Map<java.time.LocalDate, Long?> = applyWithReceipt(calendar, mutations, requireVisible).ids
+
+    suspend fun applyWithReceipt(
+        calendar: Long,
+        mutations: List<CalendarMutation>,
+        requireVisible: Boolean = false,
+    ): CalendarWriteResult =
         withContext(Dispatchers.IO) {
             // A linked calendar can be renamed or hidden after the user imports a shift.
             val visible =
@@ -368,7 +378,13 @@ class CalendarRepository(private val resolver: ContentResolver) {
                     },
                 )
             }
-            ids
+            CalendarWriteResult(
+                ids,
+                mutations.count { mutation ->
+                    mutation.event != null &&
+                        results.getOrNull(indices[mutation.date] ?: -1)?.uri != null
+                },
+            )
         }
 
     suspend fun verifyInstances(calendar: Long, expected: Map<Long, CalendarEvent>) =

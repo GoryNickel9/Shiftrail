@@ -82,7 +82,7 @@ data class SettingsEntity(
     val eventColor: Int? = 0xff1a73e8.toInt(),
     val developer: Boolean = false,
     @ColumnInfo(defaultValue = "-16023485") val restColor: Int? = 0xff0b8043.toInt(),
-    @ColumnInfo(defaultValue = "1") val saveRestDays: Boolean = true,
+    @ColumnInfo(defaultValue = "1") val saveRestDays: Boolean = false,
     @ColumnInfo(defaultValue = "0") val notificationsEnabled: Boolean = false,
     @ColumnInfo(defaultValue = "30") val notificationMinutes: Int = 30,
     @ColumnInfo(defaultValue = "1") val notificationSound: Boolean = true,

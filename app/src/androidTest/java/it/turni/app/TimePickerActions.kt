@@ -21,7 +21,7 @@ fun ComposeContentTestRule.selectTime(tag: String, time: String) {
     val screenshot = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
     try {
         val directory =
-            File(instrumentation.targetContext.getExternalFilesDir(null), "qa-1.0.0").apply {
+            File(instrumentation.targetContext.getExternalFilesDir(null), "qa-1.0.1").apply {
                 mkdirs()
             }
         File(directory, "time-picker.png").outputStream().use {

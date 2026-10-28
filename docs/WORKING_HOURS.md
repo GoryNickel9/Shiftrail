@@ -1,5 +1,7 @@
 # Ore
 
+Dalla 1.0.1 la UI usa la dicitura Straordinari e mostra le azioni a destra. Il pannello Settimana ha una scelta provvisoria, un’anteprima delle ore e una conferma esplicita. Il calcolo descritto qui resta invariato.
+
 **Ore notturne**, sotto **Extra**, conta l’intersezione degli intervalli lavorati con la fascia locale `[00:00, 06:00)` di ogni giorno del periodo selezionato. Include gli extra e usa la stessa deduplicazione del totale. Non modifica i totali ordinari o extra e non viene sommata nuovamente al totale. Per esempio, 22:00–07:00 vale 9 ore totali e 6 notturne; 23:00–24:00 vale 1 ora totale e zero notturne. Le quote fuori dal mese o dalla settimana selezionati restano escluse. Anche le ore notturne usano durate nominali locali nei cambi DST.
 
 `24:00` viene normalizzato a `00:00` nel parser e nell’editor Ore. Vale come inizio della data indicata quando è il primo orario; come fine segue la regola del passaggio al giorno successivo. `24:01`, altre ore oltre le 24 e intervalli con inizio e fine equivalenti restano invalidi.

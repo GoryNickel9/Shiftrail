@@ -7,7 +7,7 @@ import android.provider.CalendarContract
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.Closeable
 
-class CalendarFixture(account: String) : Closeable {
+class CalendarFixture(account: String, displayName: String = "PC Sync") : Closeable {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val resolver = context.contentResolver
@@ -38,7 +38,7 @@ class CalendarFixture(account: String) : Closeable {
                                 CalendarContract.ACCOUNT_TYPE_LOCAL,
                             )
                             put(CalendarContract.Calendars.NAME, "PC Sync")
-                            put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "PC Sync")
+                            put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, displayName)
                             put(CalendarContract.Calendars.OWNER_ACCOUNT, account)
                             put(
                                 CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,

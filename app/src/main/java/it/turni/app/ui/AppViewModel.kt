@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.*
 data class AppState(
     val loaded: Boolean = false,
     val busy: Boolean = false,
+    val analyzing: Boolean = false,
     val error: String? = null,
     val profile: ProfileEntity? = null,
     val settings: SettingsEntity = SettingsEntity(),
@@ -248,8 +249,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     loaded = true,
                     profile = profile,
                     settings =
-                        dao.settings()
-                            ?: SettingsEntity(title = app.getString(R.string.default_event_title)),
+                        (dao.settings()
+                                ?: SettingsEntity(
+                                    title = app.getString(R.string.default_event_title)
+                                ))
+                            .copy(saveRestDays = false),
                     calendars =
                         if (hasCalendarPermission()) app.calendar.calendars() else emptyList(),
                 )
@@ -440,7 +444,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 reminderMinutes = it.reminderMinutes,
                 color = it.eventColor,
                 restColor = it.restColor,
-                saveRestDays = it.saveRestDays,
+                saveRestDays = false,
             )
         }
 
@@ -501,7 +505,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 name.trim(),
                 "",
             )
-        val savedSettings = settings.copy(title = EventFactory.WORK_EVENT_TITLE)
+        val savedSettings =
+            settings.copy(title = EventFactory.WORK_EVENT_TITLE, saveRestDays = false)
         app.database.withTransaction {
             dao.saveProfile(profile)
             dao.saveSettings(savedSettings)
@@ -551,30 +556,35 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun analyze(corners: List<Corner>, onFinished: () -> Unit) = launchWork {
-        val original = requireNotNull(mutable.value.image)
-        val rectified = images.rectify(original, corners)
-        val profile = requireNotNull(mutable.value.profile)
-        val hash = images.fingerprint(original)
-        val result =
-            extractor.extract(
-                ImageInput(
-                    rectified,
-                    EmployeeProfile(profile.name),
-                    LocalDate.now(),
+        mutable.update { it.copy(analyzing = true) }
+        try {
+            val original = requireNotNull(mutable.value.image)
+            val rectified = images.rectify(original, corners)
+            val profile = requireNotNull(mutable.value.profile)
+            val hash = images.fingerprint(original)
+            val result =
+                extractor.extract(
+                    ImageInput(
+                        rectified,
+                        EmployeeProfile(profile.name),
+                        LocalDate.now(),
+                    )
                 )
-            )
-        val duplicate = dao.byHash(profile.id, hash) != null
-        mutable.update {
-            it.copy(
-                analyzed = rectified,
-                extraction = result,
-                hash = hash,
-                duplicatePhoto = duplicate,
-                prepared = null,
-                confirmedMonday = null,
-            )
+            val duplicate = dao.byHash(profile.id, hash) != null
+            mutable.update {
+                it.copy(
+                    analyzed = rectified,
+                    extraction = result,
+                    hash = hash,
+                    duplicatePhoto = duplicate,
+                    prepared = null,
+                    confirmedMonday = null,
+                )
+            }
+            onFinished()
+        } finally {
+            mutable.update { it.copy(analyzing = false) }
         }
-        onFinished()
     }
 
     fun chooseRow(row: RowCandidate) {
@@ -715,7 +725,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val profile = requireNotNull(state.profile)
         val result = requireNotNull(state.extraction).table
         require(result.selected != null && result.issues.isEmpty()) { "REVIEW_REQUIRED" }
-        require(result.cells.none { it.requiresCalendarReview(state.settings.saveRestDays) }) {
+        require(result.cells.none { it.requiresCalendarReview(false) }) {
             "REVIEW_REQUIRED"
         }
         if (enable) app.calendar.enableForImport(calendarId)
@@ -775,7 +785,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun synchronize(onDone: () -> Unit) = launchWork {
         val plan = requireNotNull(mutable.value.prepared)
-        val count = app.sync.commit(plan, mutable.value.selectedChanges)
+        val count = app.sync.commitWithReceipt(plan, mutable.value.selectedChanges).added
         val shift =
             dao.previous(
                     plan.employee,

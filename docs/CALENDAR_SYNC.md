@@ -1,5 +1,7 @@
 # Sincronizzazione calendario
 
+Dalla 1.0.1 le nuove importazioni escludono i riposi anche con vecchie preferenze abilitate. La conclusione riporta gli eventi effettivamente aggiunti, separatamente dagli aggiornamenti e dai recuperi dopo un’interruzione. Identità di account, servizio e app di apertura sono distinte; dettagli e compatibilità sono in [UI_RELEASE_1_0_1.md](UI_RELEASE_1_0_1.md). Gli eventi di riposo già presenti non vengono cancellati automaticamente.
+
 Dalla 0.4.0 il calendario può essere scelto in **Impostazioni → Calendario destinazione**. La scelta viene salvata subito e riutilizzata nelle nuove importazioni. Dopo la revisione si passa direttamente all’anteprima se la destinazione esiste, è scrivibile, visibile e attiva; altrimenti torna la scelta con un avviso. Non viene selezionato automaticamente un altro account. Anche la prima scelta durante un’importazione diventa la preferenza successiva. Cambiare destinazione non sposta i turni già collegati ad altri calendari e non richiede una migrazione Room.
 
 La conferma di un’importazione ricontrolla la visibilità prima del batch: se la destinazione è stata nascosta dopo l’anteprima, blocca la scrittura e non salva turni locali. Le modifiche da Ore ai turni già collegati a un calendario nascosto restano consentite.

@@ -1,16 +1,11 @@
 package it.turni.app.ui
 
-import android.content.ActivityNotFoundException
-import android.content.ContentUris
-import android.content.Intent
-import android.provider.CalendarContract
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -181,39 +176,23 @@ private fun ShiftSummary(shift: ShiftEntity) {
 
 @Composable
 fun ResultScreen(state: AppState, onError: (String) -> Unit, onHome: () -> Unit) {
-    val context = LocalContext.current
     ScreenColumn {
-        Text(stringResource(R.string.sync_result), style = MaterialTheme.typography.headlineMedium)
-        Text(stringResource(R.string.sync_count, state.syncCount ?: 0))
+        Text(
+            stringResource(R.string.calendar_added),
+            style = MaterialTheme.typography.headlineMedium,
+        )
+        Text(
+            (state.syncCount ?: 0).toString(),
+            Modifier.testTag("calendar_added_count"),
+            style = MaterialTheme.typography.displayLarge,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(stringResource(R.string.choose_calendar), style = MaterialTheme.typography.titleMedium)
         state.syncedCalendar?.let { calendar ->
-            Text(calendar.name, style = MaterialTheme.typography.titleMedium)
-            Text(calendar.account)
-            if (calendar.localOnly) Text(stringResource(R.string.calendar_local_only))
-        }
-        Text(stringResource(R.string.done_note))
-        state.syncedShift?.let { shift ->
-            OutlinedButton(
-                onClick = {
-                    try {
-                        context.startActivity(
-                            Intent(
-                                Intent.ACTION_VIEW,
-                                ContentUris.withAppendedId(
-                                    CalendarContract.Events.CONTENT_URI,
-                                    shift.calendarEventId,
-                                ),
-                            )
-                        )
-                    } catch (_: ActivityNotFoundException) {
-                        onError(context.getString(R.string.calendar_app_missing))
-                    } catch (_: SecurityException) {
-                        onError(context.getString(R.string.permission_denied))
-                    }
-                }
-            ) {
-                Text(stringResource(R.string.open_calendar))
+            OutlinedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) { CalendarDestination(calendar) }
             }
         }
-        Button(onClick = onHome) { Text(stringResource(R.string.home)) }
     }
 }

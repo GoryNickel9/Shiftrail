@@ -25,8 +25,8 @@ class CalendarPreferenceUiTest {
             InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
                 as TurniApplication
         val oldSettings = runBlocking { app.database.dao().settings() }
-        CalendarFixture("preferred-other").use {
-            CalendarFixture("preferred-target").use { target ->
+        CalendarFixture("preferred-other", displayName = "preferred-other").use {
+            CalendarFixture("preferred-target", displayName = "preferred-target").use { target ->
                 val model = mutableStateOf(AppViewModel(app))
                 val store = ViewModelStore().apply { put("preferences", model.value) }
                 try {

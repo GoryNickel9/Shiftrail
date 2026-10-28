@@ -46,4 +46,18 @@ class TimeWheelUiTest {
         assertTrue(cancelled)
         assertEquals(LocalTime.of(8, 7), saved)
     }
+
+    @Test
+    fun minuteWheelRespondsToRealSwipeAndSnapsToQuarterHours() {
+        var saved = LocalTime.of(8, 7)
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                ShiftrailTheme { TimeWheelDialog(saved, {}, { saved = it }) }
+            }
+        }
+        compose.onNodeWithTag("time_minute").performTouchInput { swipeUp(durationMillis = 400) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("confirm_time").performClick()
+        assertTrue(saved.minute in listOf(15, 30, 45))
+    }
 }

@@ -68,7 +68,7 @@ class AppearanceUiTest {
             compose.onNodeWithTag("settings_back").performClick()
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("menu_updates"))
             compose.onNodeWithTag("menu_updates").performClick()
-            compose.onNodeWithText("Versione installata: 1.0.0").assertIsDisplayed()
+            compose.onNodeWithText("Versione installata: 1.0.1").assertIsDisplayed()
             screenshot("updates")
             compose.onNodeWithText("Home").performClick()
             screenshot("home")
@@ -81,7 +81,7 @@ class AppearanceUiTest {
 
     private fun screenshot(name: String) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext
-        val directory = File(app.getExternalFilesDir(null), "qa-1.0.0").apply { mkdirs() }
+        val directory = File(app.getExternalFilesDir(null), "qa-1.0.1").apply { mkdirs() }
         File(directory, "$name.png").outputStream().use {
             compose
                 .onRoot()
