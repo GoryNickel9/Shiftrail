@@ -10,7 +10,6 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +19,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -85,25 +83,23 @@ fun NotificationSettings(
                 stringResource(R.string.notification_advance),
                 style = MaterialTheme.typography.titleMedium,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    hours,
-                    { if (it.length <= 3 && it.all(Char::isDigit)) onHours(it) },
-                    Modifier.weight(1f).testTag("notification_hours"),
-                    label = { Text(stringResource(R.string.notification_hours)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    isError = !validTime,
-                )
-                OutlinedTextField(
-                    minutes,
-                    { if (it.length <= 2 && it.all(Char::isDigit)) onMinutes(it) },
-                    Modifier.weight(1f).testTag("notification_minutes"),
-                    label = { Text(stringResource(R.string.notification_minutes)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    isError = !validTime,
-                )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                NumberWheel(
+                    hours.toIntOrNull() ?: 0,
+                    (0..168).toList(),
+                    stringResource(R.string.notification_hours),
+                    "notification_hours",
+                ) {
+                    onHours(it.toString())
+                }
+                NumberWheel(
+                    minutes.toIntOrNull() ?: 0,
+                    (0..59).toList(),
+                    stringResource(R.string.notification_minutes),
+                    "notification_minutes",
+                ) {
+                    onMinutes(it.toString())
+                }
             }
             if (!validTime)
                 Text(

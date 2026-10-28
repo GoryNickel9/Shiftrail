@@ -68,11 +68,11 @@ class AppearanceUiTest {
             compose.onNodeWithTag("settings_back").performClick()
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("menu_updates"))
             compose.onNodeWithTag("menu_updates").performClick()
-            compose.onNodeWithText("Versione installata: 1.0.1").assertIsDisplayed()
+            compose.onNodeWithText("Versione installata: 1.0.2").assertIsDisplayed()
             screenshot("updates")
             compose.onNodeWithText("Home").performClick()
             screenshot("home")
-            compose.onNodeWithText("Ore").performClick()
+            compose.onNodeWithText("Orario").performClick()
             screenshot("hours")
         } finally {
             runBlocking { appearance.save(previous) }
@@ -81,7 +81,7 @@ class AppearanceUiTest {
 
     private fun screenshot(name: String) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext
-        val directory = File(app.getExternalFilesDir(null), "qa-1.0.1").apply { mkdirs() }
+        val directory = File(app.getExternalFilesDir(null), "qa-1.0.2").apply { mkdirs() }
         File(directory, "$name.png").outputStream().use {
             compose
                 .onRoot()

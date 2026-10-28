@@ -13,8 +13,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -444,8 +442,6 @@ private fun WorkHoursDialog(
     onDismiss: () -> Unit,
     onSave: (LocalDate, LocalTime, LocalTime) -> Unit,
 ) {
-    val focus = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
     var date by
         rememberSaveable(previous?.id) {
             mutableStateOf(
@@ -492,47 +488,23 @@ private fun WorkHoursDialog(
                 }
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedCard(
-                            onClick = {
-                                focus.clearFocus()
-                                keyboard?.hide()
-                                choosingTime = "start"
-                            },
-                            modifier = Modifier.weight(1f).testTag("extra_start"),
+                        TimeField(
+                            start,
+                            stringResource(R.string.start_time),
+                            "extra_start",
+                            Modifier.weight(1f),
                             enabled = !busy,
                         ) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text(
-                                    stringResource(R.string.start_time),
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                                Text(
-                                    start.ifBlank { "--:--" },
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
+                            choosingTime = "start"
                         }
-                        OutlinedCard(
-                            onClick = {
-                                focus.clearFocus()
-                                keyboard?.hide()
-                                choosingTime = "end"
-                            },
-                            modifier = Modifier.weight(1f).testTag("extra_end"),
+                        TimeField(
+                            end,
+                            stringResource(R.string.end_time),
+                            "extra_end",
+                            Modifier.weight(1f),
                             enabled = !busy,
                         ) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text(
-                                    stringResource(R.string.end_time),
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                                Text(
-                                    end.ifBlank { "--:--" },
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
+                            choosingTime = "end"
                         }
                     }
                 }

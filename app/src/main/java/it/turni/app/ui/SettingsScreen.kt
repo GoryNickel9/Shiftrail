@@ -105,7 +105,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
             )
         }
         LazyColumn(
-            Modifier.weight(1f).fillMaxWidth(),
+            Modifier.weight(1f).fillMaxWidth().testTag("settings_list"),
             state = settingsScroll,
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),

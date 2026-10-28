@@ -92,7 +92,7 @@ class RequiredUpdateUiTest {
             compose.onNodeWithText("Scarica aggiornamento").assertIsDisplayed()
             compose.onNodeWithText("Più tardi").assertDoesNotExist()
             compose.onNodeWithText("Home").assertDoesNotExist()
-            compose.onNodeWithText("Ore").assertDoesNotExist()
+            compose.onNodeWithText("Orario").assertDoesNotExist()
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
             compose.onNodeWithTag("required_update").assertIsDisplayed()
             val screenshot = compose.onRoot().captureToImage().asAndroidBitmap()

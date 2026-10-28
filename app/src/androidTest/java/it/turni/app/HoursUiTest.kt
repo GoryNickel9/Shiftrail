@@ -150,7 +150,7 @@ class HoursUiTest {
             }
             compose.waitUntil(15000) { calendarSelected }
             waitForHome(profile.name)
-            compose.onNodeWithText("Ore").performClick()
+            compose.onNodeWithText("Orario").performClick()
             waitForTotal("8 h 00 min")
             compose.onNodeWithTag("hours_work").assertTextEquals("8 h 00 min")
             compose.onNodeWithTag("hours_extra").assertTextEquals("0 h 00 min")

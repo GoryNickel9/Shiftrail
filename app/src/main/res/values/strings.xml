@@ -143,7 +143,7 @@
     <string name="save_rest_days_note">Inserisci le X come eventi di intera giornata.</string>
     <string name="calendar_preferences_note">Le preferenze si applicano alla prossima sincronizzazione. Disattivare i riposi non elimina gli eventi già salvati. Colori e avvisi sono gestiti dal calendario del dispositivo.</string>
     <string name="close">Chiudi</string>
-    <string name="hours">Ore</string>
+    <string name="hours">Orario</string>
     <string name="hours_calendar_cached">Mostro gli orari salvati nell’app. Consenti l’accesso al calendario per includere le modifiche fatte da altre app.</string>
     <string name="hours_calendar_permission">Consenti accesso al calendario</string>
     <string name="hours_ends_on">Fine il %1$s</string>
@@ -168,7 +168,7 @@
     <string name="start_time">Inizio</string>
     <string name="end_time">Fine</string>
     <string name="extra_help">Se la fine precede l’inizio, il lavoro termina il giorno successivo. Gli extra aggiornano l’orario in home e nel calendario, anche per date passate.</string>
-    <string name="extra_calendar_conflict">Il turno è stato modificato o spostato nel calendario. Controlla l’orario di base in Ore prima di modificare gli extra.</string>
+    <string name="extra_calendar_conflict">Il turno è stato modificato o spostato nel calendario. Controlla l’orario di base in Orario prima di modificare gli extra.</string>
     <string name="extra_invalid">Inserisci una data valida e due orari diversi nel formato HH:MM.</string>
     <string name="extra_duplicate">Questi straordinari sono già registrati.</string>
     <string name="extra_delete_title">Eliminare gli straordinari?</string>

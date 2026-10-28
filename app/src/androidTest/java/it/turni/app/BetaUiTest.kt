@@ -37,7 +37,7 @@ class BetaUiTest {
             compose.runOnUiThread { compose.activity.setContent { TurniApp(vm) } }
             compose.waitUntil(15000) { vm.state.value.loaded && !vm.state.value.busy }
             compose.onNodeWithTag("required_update").assertDoesNotExist()
-            compose.onNodeWithText("Ore").assertIsDisplayed()
+            compose.onNodeWithText("Orario").assertIsDisplayed()
             compose.onNodeWithText("Impostazioni").performClick()
             compose.onNodeWithTag("menu_updates").performScrollTo().performClick()
             compose

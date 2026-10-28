@@ -14,6 +14,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
@@ -23,6 +25,37 @@ import java.time.LocalTime
 import kotlin.math.abs
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+
+@Composable
+fun TimeField(
+    value: String,
+    label: String,
+    tag: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    OutlinedCard(
+        onClick = {
+            focus.clearFocus()
+            keyboard?.hide()
+            onClick()
+        },
+        modifier = modifier.testTag(tag),
+        enabled = enabled,
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium)
+            Text(
+                value.ifBlank { "--:--" },
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
 
 /** Compose-only wheels avoid native view remeasurement inside nested edit dialogs. */
 @Composable
@@ -164,7 +197,9 @@ fun TimeWheelDialog(value: LocalTime, onDismiss: () -> Unit, onChoose: (LocalTim
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("cancel_time")) {
+                Text(stringResource(R.string.cancel))
+            }
         },
     )
 }

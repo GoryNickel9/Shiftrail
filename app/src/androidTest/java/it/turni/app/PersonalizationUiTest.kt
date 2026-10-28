@@ -6,6 +6,9 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
@@ -62,16 +65,42 @@ class PersonalizationUiTest {
             compose.waitUntil(15000) {
                 compose.onAllNodesWithTag("app_background").fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithTag("menu_notifications").performScrollTo().performClick()
             compose
-                .onNode(hasScrollToIndexAction())
+                .onNodeWithTag("settings_list")
+                .performScrollToNode(hasTestTag("menu_notifications"))
+            compose.onNodeWithTag("menu_notifications").performClick()
+            compose
+                .onNodeWithTag("settings_list")
                 .performScrollToNode(hasTestTag("notifications_enabled"))
             if (!oldSettings.notificationsEnabled)
                 compose.onNodeWithTag("notifications_enabled").performClick()
-            compose.onNodeWithTag("notification_hours").performScrollTo().performTextClearance()
-            compose.onNodeWithTag("notification_hours").performTextInput("1")
-            compose.onNodeWithTag("notification_minutes").performTextClearance()
-            compose.onNodeWithTag("notification_minutes").performTextInput("15")
+            compose.onNodeWithTag("notification_hours").performScrollTo().performSemanticsAction(
+                SemanticsActions.SetProgress
+            ) {
+                it(168f)
+            }
+            compose.onNodeWithTag("notification_minutes").performSemanticsAction(
+                SemanticsActions.SetProgress
+            ) {
+                it(1f)
+            }
+            compose.onNodeWithText("Salva").assertIsNotEnabled()
+            compose.onNodeWithTag("notification_minutes").performSemanticsAction(
+                SemanticsActions.SetProgress
+            ) {
+                it(0f)
+            }
+            compose.onNodeWithText("Salva").assertIsEnabled()
+            compose.onNodeWithTag("notification_hours").performScrollTo().performSemanticsAction(
+                SemanticsActions.SetProgress
+            ) {
+                it(1f)
+            }
+            compose.onNodeWithTag("notification_minutes").performSemanticsAction(
+                SemanticsActions.SetProgress
+            ) {
+                it(15f)
+            }
             if (oldSettings.notificationSound)
                 compose.onNodeWithTag("notification_sound").performScrollTo().performClick()
             if (oldSettings.notificationVibration)
@@ -84,7 +113,15 @@ class PersonalizationUiTest {
                     .compress(Bitmap.CompressFormat.PNG, 100, it)
             }
             compose.activityRule.scenario.recreate()
-            compose.onNodeWithTag("notification_hours").performScrollTo().assertTextContains("1")
+            compose
+                .onNodeWithTag("notification_hours")
+                .performScrollTo()
+                .assert(
+                    SemanticsMatcher.expectValue(
+                        SemanticsProperties.ProgressBarRangeInfo,
+                        ProgressBarRangeInfo(1f, 0f..168f, 167),
+                    )
+                )
             compose.onNodeWithText("Salva").performClick()
             compose.waitUntil(15000) { runBlocking { dao.settings()?.notificationMinutes == 75 } }
             val settings = requireNotNull(runBlocking { dao.settings() })
@@ -96,15 +133,28 @@ class PersonalizationUiTest {
                 compose.onAllNodesWithTag("app_background").fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText("Impostazioni").performClick()
-            compose.onNodeWithTag("menu_notifications").performScrollTo().performClick()
             compose
-                .onNode(hasScrollToIndexAction())
+                .onNodeWithTag("settings_list")
+                .performScrollToNode(hasTestTag("menu_notifications"))
+            compose.onNodeWithTag("menu_notifications").performClick()
+            compose
+                .onNodeWithTag("settings_list")
                 .performScrollToNode(hasTestTag("notification_minutes"))
-            compose.onNodeWithTag("notification_minutes").assertTextContains("15")
-            compose.onNodeWithTag("settings_back").performClick()
-            compose.onNodeWithTag("menu_background").performScrollTo().performClick()
             compose
-                .onNode(hasScrollToIndexAction())
+                .onNodeWithTag("notification_minutes")
+                .assert(
+                    SemanticsMatcher.expectValue(
+                        SemanticsProperties.ProgressBarRangeInfo,
+                        ProgressBarRangeInfo(15f, 0f..59f, 58),
+                    )
+                )
+            compose.onNodeWithTag("settings_back").performClick()
+            compose
+                .onNodeWithTag("settings_list")
+                .performScrollToNode(hasTestTag("menu_background"))
+            compose.onNodeWithTag("menu_background").performClick()
+            compose
+                .onNodeWithTag("settings_list")
                 .performScrollToNode(hasTestTag("reset_background"))
             compose.onNodeWithTag("reset_background").performClick()
             compose.waitUntil(15000) { !backgroundFile.exists() }

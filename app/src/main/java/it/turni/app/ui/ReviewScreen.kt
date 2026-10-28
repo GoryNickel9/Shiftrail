@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -16,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import it.turni.app.R
 import it.turni.core.*
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -341,42 +343,118 @@ private fun ReviewCellCard(
 }
 
 @Composable
-private fun EditCellDialog(
+internal fun EditCellDialog(
     cell: ShiftCell?,
     defaultDate: LocalDate,
     dismiss: () -> Unit,
     save: (String, String) -> Boolean,
 ) {
-    var date by remember { mutableStateOf((cell?.date ?: defaultDate).toString()) }
-    var raw by remember { mutableStateOf(cell?.raw.orEmpty()) }
-    var invalid by remember { mutableStateOf(false) }
+    var date by rememberSaveable { mutableStateOf((cell?.date ?: defaultDate).toString()) }
+    var type by rememberSaveable {
+        mutableStateOf(cell?.type?.takeIf { it != CellType.UNKNOWN } ?: CellType.WORK_SHIFT)
+    }
+    var start by rememberSaveable { mutableStateOf(cell?.start?.toString().orEmpty()) }
+    var end by rememberSaveable { mutableStateOf(cell?.end?.toString().orEmpty()) }
+    var choosingTime by rememberSaveable { mutableStateOf<String?>(null) }
+    var invalid by rememberSaveable { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = dismiss,
         title = { Text(stringResource(R.string.edit)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    date,
-                    { date = it },
-                    label = { Text(stringResource(R.string.date)) },
-                )
-                OutlinedTextField(
-                    raw,
-                    { raw = it },
-                    label = { Text(stringResource(R.string.cell_content)) },
-                )
-                if (invalid)
-                    Text(
-                        stringResource(R.string.invalid_cell),
-                        color = MaterialTheme.colorScheme.error,
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item {
+                    OutlinedTextField(
+                        date,
+                        {
+                            date = it
+                            invalid = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.date)) },
+                        singleLine = true,
                     )
+                }
+                item {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                                CellType.WORK_SHIFT to R.string.default_event_title,
+                                CellType.CODE to R.string.rest_day,
+                                CellType.EMPTY to R.string.empty_cell,
+                            )
+                            .forEach { (choice, label) ->
+                                FilterChip(
+                                    selected = type == choice,
+                                    onClick = {
+                                        type = choice
+                                        invalid = false
+                                    },
+                                    label = { Text(stringResource(label)) },
+                                    modifier = Modifier.testTag("review_type_${choice.name}"),
+                                )
+                            }
+                    }
+                }
+                if (type == CellType.WORK_SHIFT)
+                    item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            TimeField(
+                                start,
+                                stringResource(R.string.start_time),
+                                "review_start",
+                                Modifier.weight(1f),
+                            ) {
+                                choosingTime = "start"
+                            }
+                            TimeField(
+                                end,
+                                stringResource(R.string.end_time),
+                                "review_end",
+                                Modifier.weight(1f),
+                            ) {
+                                choosingTime = "end"
+                            }
+                        }
+                    }
+                if (invalid)
+                    item {
+                        Text(
+                            stringResource(R.string.invalid_cell),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
             }
         },
         confirmButton = {
-            TextButton(onClick = { invalid = !save(date, raw) }) {
+            TextButton(
+                onClick = {
+                    val raw =
+                        when (type) {
+                            CellType.CODE -> ShiftParser.REST_CODE
+                            CellType.EMPTY -> ""
+                            else -> "$start-$end"
+                        }
+                    val missingTime =
+                        type == CellType.WORK_SHIFT &&
+                            (start.isBlank() || end.isBlank() || start == end)
+                    invalid = missingTime || !save(date, raw)
+                }
+            ) {
                 Text(stringResource(R.string.save))
             }
         },
         dismissButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.cancel)) } },
     )
+    choosingTime?.let { field ->
+        TimeWheelDialog(
+            value =
+                runCatching { LocalTime.parse(if (field == "start") start else end) }
+                    .getOrDefault(LocalTime.of(8, 0)),
+            onDismiss = { choosingTime = null },
+            onChoose = {
+                if (field == "start") start = it.toString() else end = it.toString()
+                choosingTime = null
+                invalid = false
+            },
+        )
+    }
 }

@@ -32,7 +32,7 @@ class UiSmokeTest {
         }
         assertSimplifiedHome()
         compose.onNodeWithText("Impostazioni").performClick()
-        compose.onNodeWithText("Nome e cognome").assertIsDisplayed()
+        compose.onNodeWithText("Nome e cognome").performScrollTo().assertIsDisplayed()
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(1)
         compose.onNodeWithText("Alias OCR, uno per riga").assertDoesNotExist()
         compose.onNodeWithText("Titolo evento").assertDoesNotExist()

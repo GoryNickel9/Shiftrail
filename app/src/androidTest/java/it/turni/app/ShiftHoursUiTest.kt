@@ -172,7 +172,7 @@ class ShiftHoursUiTest {
                     .fetchSemanticsNodes()
                     .isNotEmpty()
             }
-            compose.onNodeWithText("Ore").performClick()
+            compose.onNodeWithText("Orario").performClick()
             waitForTotal("6 h 00 min")
             openEdit(shiftId)
             compose.onNodeWithText("Modifica orario turno").assertIsDisplayed()

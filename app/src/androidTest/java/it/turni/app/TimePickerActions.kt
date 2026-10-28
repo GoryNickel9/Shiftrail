@@ -7,10 +7,16 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 
+fun ComposeContentTestRule.scrollToDialogControl(tag: String): SemanticsNodeInteraction {
+    onNode(hasScrollToIndexAction() and hasAnyAncestor(isDialog()))
+        .performScrollToNode(hasTestTag(tag))
+    return onNodeWithTag(tag)
+}
+
 fun ComposeContentTestRule.selectTime(tag: String, time: String) {
     val parts = time.split(":").map(String::toInt)
     require(parts[0] in 0..23 && parts[1] in listOf(0, 15, 30, 45))
-    onNodeWithTag(tag).performScrollTo().performClick()
+    scrollToDialogControl(tag).performClick()
     onNodeWithTag("time_hour").performSemanticsAction(SemanticsActions.SetProgress) {
         it(parts[0].toFloat())
     }
@@ -21,7 +27,7 @@ fun ComposeContentTestRule.selectTime(tag: String, time: String) {
     val screenshot = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
     try {
         val directory =
-            File(instrumentation.targetContext.getExternalFilesDir(null), "qa-1.0.1").apply {
+            File(instrumentation.targetContext.getExternalFilesDir(null), "qa-1.0.2").apply {
                 mkdirs()
             }
         File(directory, "time-picker.png").outputStream().use {
