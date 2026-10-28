@@ -5,6 +5,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class WorkReminderTest {
+    @org.junit.Test
+    fun notificationRangeHasOnlyHoursAcrossMidnight() {
+        val start = java.time.Instant.parse("2026-10-28T19:00:00Z").toEpochMilli()
+        val end = java.time.Instant.parse("2026-10-29T07:00:00Z").toEpochMilli()
+        org.junit.Assert.assertEquals(
+            "20:00 – 08:00",
+            workTimeRange(start, end, java.time.ZoneId.of("Europe/Rome")),
+        )
+    }
+
     private val zone = ZoneId.of("Europe/Rome")
     private val day = LocalDate.of(2026, 10, 27)
 

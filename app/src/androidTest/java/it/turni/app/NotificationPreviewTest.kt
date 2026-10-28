@@ -57,7 +57,8 @@ class NotificationPreviewTest {
                         region.width(),
                         region.height(),
                     )
-            File(app.filesDir, name).outputStream().use {
+            val directory = File(app.getExternalFilesDir(null), "qa-1.0.4").apply { mkdirs() }
+            File(directory, name).outputStream().use {
                 visible.compress(Bitmap.CompressFormat.PNG, 100, it)
             }
             if (visible !== bitmap) visible.recycle()
@@ -73,6 +74,7 @@ class NotificationPreviewTest {
             dao.saveSettings(
                 oldSettings.copy(
                     notificationsEnabled = true,
+                    fullScreenAlarm = false,
                     notificationMinutes = minutes,
                     notificationSound = false,
                     notificationVibration = false,

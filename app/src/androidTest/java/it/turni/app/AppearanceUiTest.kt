@@ -59,13 +59,13 @@ class AppearanceUiTest {
             compose.onNodeWithTag("theme_system").assertIsSelected()
             val after = File(app.filesDir, "app-background.jpg").takeIf { it.exists() }?.readBytes()
             assertArrayEquals(background, after)
-            compose.onNodeWithTag("settings_back").performClick()
+            compose.onNodeWithTag("tab_settings").performClick()
             compose
                 .onNode(hasScrollToIndexAction())
                 .performScrollToNode(hasTestTag("menu_calendar"))
             compose.onNodeWithTag("menu_calendar").performClick()
             screenshot("calendar")
-            compose.onNodeWithTag("settings_back").performClick()
+            compose.onNodeWithTag("tab_settings").performClick()
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("menu_updates"))
             compose.onNodeWithTag("menu_updates").performClick()
             compose

@@ -272,7 +272,15 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit, resel
                             Row(
                                 Modifier.fillMaxWidth().testTag("hours_actions_${period.id}"),
                                 horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                Text(
+                                    period.date.format(
+                                        DateTimeFormatter.ofPattern("EEE d MMM", Locale.ITALIAN)
+                                    ),
+                                    Modifier.weight(1f).testTag("hours_date_${period.id}"),
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
                                 IconButton(
                                     onClick = {
                                         if (canWriteCalendar()) editingId = period.id
@@ -310,12 +318,6 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit, resel
                                         )
                                     }
                             }
-                            Text(
-                                period.date.format(
-                                    DateTimeFormatter.ofPattern("EEE d MMM", Locale.ITALIAN)
-                                ),
-                                style = MaterialTheme.typography.titleMedium,
-                            )
                             Text(
                                 stringResource(
                                     if (period.source == WorkSource.EXTRA) R.string.extra_work

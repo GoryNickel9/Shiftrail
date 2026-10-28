@@ -46,10 +46,7 @@ class ShiftHoursUiTest {
             compose.onNodeWithText("Nome e cognome").performTextInput("Marta Neri")
             compose.onNodeWithText("Salva").performClick()
             compose.waitUntil(15000) {
-                compose
-                    .onAllNodesWithText("Importa per Marta Neri")
-                    .fetchSemanticsNodes()
-                    .isNotEmpty()
+                compose.onAllNodesWithTag("home_import_actions").fetchSemanticsNodes().isNotEmpty()
             }
         }
         val profile = requireNotNull(runBlocking { dao.profile() })
@@ -167,10 +164,7 @@ class ShiftHoursUiTest {
                 runBlocking { app.calendar.calendars().single { it.id == calendarId }.visible }
             )
             compose.waitUntil(15000) {
-                compose
-                    .onAllNodesWithText("Importa per ${profile.name}")
-                    .fetchSemanticsNodes()
-                    .isNotEmpty()
+                compose.onAllNodesWithTag("home_import_actions").fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText("Orario").performClick()
             waitForTotal("6 h 00 min")

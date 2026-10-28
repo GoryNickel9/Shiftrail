@@ -116,10 +116,6 @@ fun NotificationSettings(
                 onFullScreenAlarm,
             )
             if (fullScreenAlarm) {
-                Text(
-                    stringResource(R.string.full_screen_alarm_note),
-                    style = MaterialTheme.typography.bodySmall,
-                )
                 if (!notifications.canUseFullScreenAlarm()) {
                     OutlinedButton(
                         onClick = {

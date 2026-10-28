@@ -11,9 +11,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import it.turni.app.R
+import it.turni.app.calendar.upcomingWorkShifts
+import it.turni.app.calendar.workStart
 import it.turni.app.data.*
+import java.time.Duration
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @Composable
 fun HomeScreen(
@@ -31,19 +40,27 @@ fun HomeScreen(
             handled = reselection
         }
     }
-    val next = state.upcoming.firstOrNull { it.type == "WORK_SHIFT" }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val now by
+        produceState(LocalDateTime.now(), lifecycle, state.upcoming) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (isActive) {
+                    value = LocalDateTime.now()
+                    val nextStart =
+                        upcomingWorkShifts(state.upcoming, value).firstOrNull()?.workStart()
+                    val wait = nextStart?.let { Duration.between(value, it).toMillis() } ?: 60_000L
+                    delay(wait.coerceIn(1L, 60_000L))
+                }
+            }
+        }
+    val upcoming = upcomingWorkShifts(state.upcoming, now)
+    val next = upcoming.firstOrNull()
     LazyColumn(
         Modifier.fillMaxSize().testTag("home_list"),
         state = scroll,
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item {
-            Text(
-                stringResource(R.string.brand_tagline),
-                style = MaterialTheme.typography.headlineLarge,
-            )
-        }
         if (next != null)
             item {
                 Card(
@@ -96,43 +113,40 @@ fun HomeScreen(
                     }
                 }
             } else {
-                Text(
-                    stringResource(R.string.import_for, state.profile.name),
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-                Button(onClick = camera, Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                    Icon(
-                        androidx.compose.ui.res.painterResource(R.drawable.ic_camera),
-                        null,
-                        Modifier.padding(end = 10.dp),
-                    )
-                    Text(stringResource(R.string.camera))
-                }
-                OutlinedButton(
-                    onClick = gallery,
-                    Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 52.dp),
-                ) {
-                    Icon(
-                        androidx.compose.ui.res.painterResource(R.drawable.ic_image),
-                        null,
-                        Modifier.padding(end = 10.dp),
-                    )
-                    Text(stringResource(R.string.gallery))
+                Column(Modifier.fillMaxWidth().testTag("home_import_actions")) {
+                    Button(onClick = camera, Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Icon(
+                            androidx.compose.ui.res.painterResource(R.drawable.ic_camera),
+                            null,
+                            Modifier.padding(end = 10.dp),
+                        )
+                        Text(stringResource(R.string.camera))
+                    }
+                    OutlinedButton(
+                        onClick = gallery,
+                        Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 52.dp),
+                    ) {
+                        Icon(
+                            androidx.compose.ui.res.painterResource(R.drawable.ic_image),
+                            null,
+                            Modifier.padding(end = 10.dp),
+                        )
+                        Text(stringResource(R.string.gallery))
+                    }
                 }
             }
         }
         item {
             Text(stringResource(R.string.upcoming), style = MaterialTheme.typography.titleLarge)
         }
-        if (state.upcoming.isEmpty())
+        if (upcoming.isEmpty())
             item {
                 Text(
                     stringResource(R.string.empty_upcoming),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        items(state.upcoming.filter { it.id != next?.id }, key = { it.id }) { shift ->
+        items(upcoming.filter { it.id != next?.id }, key = { it.id }) { shift ->
             ShiftSummary(shift)
         }
     }

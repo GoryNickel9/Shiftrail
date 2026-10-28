@@ -6,13 +6,13 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 ## Download e release
 
-**Shiftrail 1.0.3** aggiunge le **pause non retribuite** in Orario, la **sveglia a schermo intero** nelle Notifiche e corregge il ritorno ai menu. L’anticipo degli avvisi è limitato a 24 ore, con minuti ogni cinque. Vedi le [note della versione](docs/releases/1.0.3.md), le [pause](docs/UNPAID_BREAKS.md) e la [sveglia](docs/NOTIFICATIONS_ALARM.md).
+**Shiftrail 1.0.4** corregge il prossimo turno in Home, allinea data e azioni in Orario e semplifica Impostazioni e notifiche. Restano disponibili pause non retribuite e sveglia a schermo intero. Vedi le [note della versione](docs/releases/1.0.4.md), il [comportamento della Home](docs/HOME_AND_NOTIFICATIONS.md) e le [pause](docs/UNPAID_BREAKS.md).
 
 [Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
 
 Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i dati. Dalla versione 0.4.0 Shiftrail controlla le nuove release a ogni ritorno nell’app: una versione successiva compatibile deve essere installata per continuare. La richiesta viene conservata anche dopo la chiusura. Il controllo manuale resta in **Impostazioni → Aggiornamenti**. Protocollo, firma e pubblicazione sono descritti in [aggiornamenti](docs/UPDATES.md).
 
-<img src="docs/images/release-1.0.2/settings.png" alt="Menu delle impostazioni Shiftrail 1.0.2" width="240"> <img src="docs/images/release-1.0.3/break-editor.png" alt="Inserimento di una pausa non retribuita" width="240"> <img src="docs/images/release-1.0.3/break-saved.png" alt="Orario con presenza, pause e ore nette" width="240">
+<img src="docs/images/release-1.0.2/settings.png" alt="Menu delle impostazioni Shiftrail 1.0.2" width="240"> <img src="docs/images/release-1.0.3/break-editor.png" alt="Inserimento di una pausa non retribuita" width="240"> <img src="docs/images/release-1.0.4/orario.png" alt="Orario con presenza, pause e ore nette" width="240">
 
 ## Utilizzo
 

@@ -93,10 +93,8 @@
     <string name="step_review">Controllo</string>
     <string name="step_calendar">Calendario</string>
     <string name="import_progress">%1$d di 3 · %2$s</string>
-    <string name="brand_tagline">Dalla foto al calendario.</string>
     <string name="first_setup">Cominciamo dal tuo nome</string>
     <string name="setup_button">Configura il profilo</string>
-    <string name="import_for">Importa per %1$s</string>
     <string name="home_steps">Scatta o importa una foto. Controlla le letture incerte. Salva i turni nel tuo calendario.</string>
     <string name="empty_upcoming">I prossimi turni compariranno qui dopo la prima importazione.</string>
     <string name="ready_badge">Pronto</string>
@@ -232,7 +230,6 @@
     <string name="notification_settings_unavailable">Le impostazioni richieste non sono disponibili. Apri le impostazioni Android dell’app.</string>
     <string name="notification_channel">Promemoria lavoro</string>
     <string name="notification_channel_description">Avvisi prima del lavoro. Suono, vibrazione e Non disturbare dipendono anche dalle impostazioni Android.</string>
-    <string name="notification_work_body">Lavoro dal %1$s al %2$s.</string>
     <string name="beta_join">Partecipa alla beta</string>
     <string name="beta_note">Scelta facoltativa, applicata subito. Ricevi anche versioni di prova, che possono contenere errori. Disattiva per tornare a ricevere solo versioni stabili: i dati restano e non viene installata automaticamente una versione precedente.</string>
     <string name="beta_installed">Hai installato una beta. Uscendo dal programma potrai aggiornare alla prossima versione stabile con numero di build successivo.</string>
@@ -274,11 +271,9 @@
     <string name="calendar_read_only_short">Solo lettura</string>
     <string name="analysis_in_progress">Analisi immagine</string>
     <string name="full_screen_alarm">Sveglia a schermo intero</string>
-    <string name="full_screen_alarm_note">Suona all’anticipo scelto e si ferma con Ferma. Richiede avvisi precisi; Android decide se aprire lo schermo intero o mostrare una notifica.</string>
     <string name="allow_full_screen_alarm">Consenti schermo intero</string>
     <string name="alarm_channel">Sveglie dei turni</string>
     <string name="alarm_title">Sveglia di lavoro</string>
-    <string name="alarm_shift_start">Inizio turno: %1$s</string>
     <string name="stop_alarm">Ferma sveglia</string>
     <string name="alarm_start_label">Inizio turno</string>
 </resources>

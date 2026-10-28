@@ -40,7 +40,17 @@ class TabNavigationUiTest {
         for (section in listOf("calendar", "background", "notifications", "updates")) {
             compose.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("menu_$section"))
             compose.onNodeWithTag("menu_$section").performClick()
-            compose.onNodeWithTag("settings_back").assertIsDisplayed()
+            compose.onNodeWithTag("settings_back").assertDoesNotExist()
+            compose
+                .onNodeWithTag("settings_heading")
+                .assertTextEquals(
+                    when (section) {
+                        "calendar" -> "Calendario"
+                        "background" -> "Sfondo"
+                        "notifications" -> "Notifiche"
+                        else -> "Aggiornamenti"
+                    }
+                )
             compose.onNodeWithTag("tab_settings").performClick()
             compose.onNodeWithTag("settings_back").assertDoesNotExist()
             compose.onNodeWithTag("menu_calendar").assertExists()
@@ -61,10 +71,7 @@ class TabNavigationUiTest {
             compose.onNodeWithText("Nome e cognome").performTextInput("Test navigazione")
             compose.onNodeWithText("Salva").performClick()
             compose.waitUntil(15000) {
-                compose
-                    .onAllNodesWithText("Importa per Test navigazione")
-                    .fetchSemanticsNodes()
-                    .isNotEmpty()
+                compose.onAllNodesWithTag("home_import_actions").fetchSemanticsNodes().isNotEmpty()
             }
             createdProfile = requireNotNull(runBlocking { app.database.dao().profile() }).id
         }

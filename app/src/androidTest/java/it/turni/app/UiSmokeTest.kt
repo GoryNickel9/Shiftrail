@@ -45,12 +45,9 @@ class UiSmokeTest {
         compose.onNodeWithTag("save_rest_days").assertDoesNotExist()
         compose.onNodeWithText("Salva").assertIsDisplayed().performClick()
         compose.waitUntil(10000) {
-            compose
-                .onAllNodes(androidx.compose.ui.test.hasText("Importa per Luca Baldeddu"))
-                .fetchSemanticsNodes()
-                .isNotEmpty()
+            compose.onAllNodes(hasTestTag("home_import_actions")).fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithText("Importa per Luca Baldeddu").assertIsDisplayed()
+        compose.onNodeWithTag("home_import_actions").assertIsDisplayed()
         assertSimplifiedHome()
         compose.onNodeWithText("Impostazioni").performClick()
         compose.onNodeWithTag("menu_calendar").performScrollTo().performClick()
@@ -61,12 +58,9 @@ class UiSmokeTest {
         compose.onNodeWithText("Home").performClick()
         compose.activityRule.scenario.recreate()
         compose.waitUntil(10000) {
-            compose
-                .onAllNodes(androidx.compose.ui.test.hasText("Importa per Luca Baldeddu"))
-                .fetchSemanticsNodes()
-                .isNotEmpty()
+            compose.onAllNodes(hasTestTag("home_import_actions")).fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithText("Importa per Luca Baldeddu").assertIsDisplayed()
+        compose.onNodeWithTag("home_import_actions").assertIsDisplayed()
         assertSimplifiedHome()
     }
 

@@ -44,10 +44,7 @@ class HoursUiTest {
             compose.onNodeWithText("Nome e cognome").performTextInput("Marta Neri")
             compose.onNodeWithText("Salva").performClick()
             compose.waitUntil(15000) {
-                compose
-                    .onAllNodesWithText("Importa per Marta Neri")
-                    .fetchSemanticsNodes()
-                    .isNotEmpty()
+                compose.onAllNodesWithTag("home_import_actions").fetchSemanticsNodes().isNotEmpty()
             }
         }
         val profile = requireNotNull(runBlocking { dao.profile() })
@@ -149,7 +146,7 @@ class HoursUiTest {
                 }
             }
             compose.waitUntil(15000) { calendarSelected }
-            waitForHome(profile.name)
+            waitForHome()
             compose.onNodeWithText("Orario").performClick()
             waitForTotal("8 h 00 min")
             compose.onNodeWithTag("hours_work").assertTextEquals("8 h 00 min")
@@ -269,9 +266,9 @@ class HoursUiTest {
         }
     }
 
-    private fun waitForHome(name: String) {
+    private fun waitForHome() {
         compose.waitUntil(15000) {
-            compose.onAllNodesWithText("Importa per $name").fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithTag("home_import_actions").fetchSemanticsNodes().isNotEmpty()
         }
     }
 

@@ -67,6 +67,12 @@ class ShiftAlarmUiTest {
                 manager.activeNotifications
                     .single { it.id == ShiftAlarmService.NOTIFICATION_ID }
                     .notification
+            assertEquals(
+                it.turni.core.workTimeRange(alarm.start, alarm.end),
+                notification.extras.getString("android.title"),
+            )
+            assertNull(notification.extras.getString("android.text"))
+            assertFalse(notification.extras.getBoolean("android.showWhen"))
             if (app.notifications.canUseFullScreenAlarm())
                 assertNotNull(notification.fullScreenIntent)
             else assertNull(notification.fullScreenIntent)

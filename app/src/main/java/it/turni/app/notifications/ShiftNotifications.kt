@@ -19,9 +19,7 @@ import it.turni.app.TurniApplication
 import it.turni.app.calendar.calendarSchedule
 import it.turni.app.data.SettingsEntity
 import it.turni.core.*
-import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -223,13 +221,7 @@ class ShiftNotifications(private val app: TurniApplication) {
                 Log.w("ShiftNotifications", "Alarm access unavailable; using reminder", error)
             }
         }
-        val format = DateTimeFormatter.ofPattern("dd/MM HH:mm").withZone(ZoneId.systemDefault())
-        val body =
-            app.getString(
-                R.string.notification_work_body,
-                format.format(Instant.ofEpochMilli(reminder.start)),
-                format.format(Instant.ofEpochMilli(reminder.end)),
-            )
+        val body = workTimeRange(reminder.start, reminder.end)
         val open =
             PendingIntent.getActivity(
                 app,
@@ -243,9 +235,8 @@ class ShiftNotifications(private val app: TurniApplication) {
                 .setColor(ContextCompat.getColor(app, R.color.shiftrail_icon_blue))
                 .setBadgeIconType(NotificationCompat.BADGE_ICON_SMALL)
                 .setNumber(1)
-                .setContentTitle(app.getString(R.string.default_event_title))
-                .setContentText(body)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                .setContentTitle(body)
+                .setShowWhen(false)
                 .setContentIntent(open)
                 .setAutoCancel(true)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)

@@ -95,10 +95,6 @@ fun SettingsScreen(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (section != null)
-                IconButton(onClick = { onSectionChange(null) }, Modifier.testTag("settings_back")) {
-                    Icon(painterResource(R.drawable.ic_back), stringResource(R.string.back))
-                }
             Text(
                 stringResource(
                     when (section) {
@@ -110,6 +106,7 @@ fun SettingsScreen(
                     }
                 ),
                 style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.testTag("settings_heading"),
             )
         }
         LazyColumn(

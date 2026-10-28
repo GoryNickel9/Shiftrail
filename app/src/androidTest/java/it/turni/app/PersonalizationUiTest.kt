@@ -148,7 +148,7 @@ class PersonalizationUiTest {
                         ProgressBarRangeInfo(3f, 0f..11f, 10),
                     )
                 )
-            compose.onNodeWithTag("settings_back").performClick()
+            compose.onNodeWithTag("tab_settings").performClick()
             compose
                 .onNodeWithTag("settings_list")
                 .performScrollToNode(hasTestTag("menu_background"))

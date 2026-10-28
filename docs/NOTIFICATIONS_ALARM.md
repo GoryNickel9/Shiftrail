@@ -16,6 +16,8 @@ Un nuovo tap su Home scorre all'inizio. Un nuovo tap su Orario torna alla vista 
 
 ## Sveglia a schermo intero
 
+Dalla 1.0.4 il testo esplicativo sotto l’opzione è rimosso e le notifiche mostrano soltanto l’intervallo del turno: vedi [Home e notifiche](HOME_AND_NOTIFICATIONS.md).
+
 Si abilita in Impostazioni → Notifiche e si applica con Salva. Usa lo stesso anticipo dell'avviso e le preferenze Suono/Vibrazione. Non è una nuova sezione della navigazione.
 
 Un allarme preciso consegna il promemoria al receiver esistente. Se la modalità sveglia è abilitata e l'accesso agli allarmi precisi è disponibile, il servizio foreground mediaPlayback pubblica una notifica ALARM ad alta importanza. L'intent a schermo intero viene aggiunto solo quando Android lo consente. In caso contrario rimangono notifica e comando Ferma; l'app non avvia attività in background per aggirare il permesso. Se manca l'accesso agli allarmi precisi o il servizio non può partire, viene usato il promemoria normale.

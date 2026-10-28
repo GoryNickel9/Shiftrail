@@ -59,6 +59,18 @@ class UnpaidBreakUiTest {
                 }
                 compose.onNodeWithTag("tab_hours").performClick()
                 total("8 h 00 min")
+                compose
+                    .onNodeWithTag("hours_list")
+                    .performScrollToNode(hasTestTag("hours_date_${extra.id}"))
+                val dateBounds =
+                    compose.onNodeWithTag("hours_date_${extra.id}").getUnclippedBoundsInRoot()
+                val editBounds =
+                    compose.onNodeWithTag("edit_${extra.id}").getUnclippedBoundsInRoot()
+                assertEquals(
+                    (dateBounds.top + dateBounds.bottom).value / 2,
+                    (editBounds.top + editBounds.bottom).value / 2,
+                    1f,
+                )
                 add()
                 choose("break_start", 2, 0)
                 choose("break_end", 2, 30)

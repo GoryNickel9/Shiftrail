@@ -70,7 +70,16 @@ class ShiftNotificationsTest {
             ) delay(50)
             assertEquals(1, manager.activeNotifications.count { it.tag == dueKey })
             val delivered = manager.activeNotifications.single { it.tag == dueKey }
-            assertEquals("Lavoro", delivered.notification.extras.getString("android.title"))
+            assertEquals(
+                workTimeRange(
+                    start.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    start.plusHours(1).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                ),
+                delivered.notification.extras.getString("android.title"),
+            )
+            assertNull(delivered.notification.extras.getString("android.text"))
+            assertFalse(delivered.notification.extras.getBoolean("android.showWhen"))
+            assertNull(delivered.notification.extras.getString("android.bigText"))
             manager.cancel(dueKey, 1)
             val cancelDeadline = System.currentTimeMillis() + 5_000
             while (

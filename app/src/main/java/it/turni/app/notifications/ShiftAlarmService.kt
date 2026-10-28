@@ -11,9 +11,7 @@ import androidx.core.content.ContextCompat
 import it.turni.app.R
 import it.turni.app.TurniApplication
 import it.turni.core.WorkReminder
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import it.turni.core.workTimeRange
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -80,15 +78,11 @@ class ShiftAlarmService : Service() {
                     .putExtra(KEY, key),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-        val whenText =
-            DateTimeFormatter.ofPattern("dd/MM HH:mm")
-                .withZone(ZoneId.systemDefault())
-                .format(Instant.ofEpochMilli(start))
         val builder =
             NotificationCompat.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(getString(R.string.alarm_title))
-                .setContentText(getString(R.string.alarm_shift_start, whenText))
+                .setContentTitle(workTimeRange(start, end))
+                .setShowWhen(false)
                 .setContentIntent(open)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
