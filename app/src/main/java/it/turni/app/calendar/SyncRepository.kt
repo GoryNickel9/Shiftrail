@@ -52,6 +52,9 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
         require(previous == null || before.any { it == previous }) { "EXTRA_CHANGED" }
         extra?.let {
             it.period()
+            it.period()
+                .copy(breaks = db.dao().breaks(employee, it.id).map { pause -> pause.domain() })
+                .validateBreaks()
             require(previous == null || it.id == previous.id)
             require(previous != null || before.none { existing -> existing.id == it.id })
             val duplicate = db.dao().findExtra(employee, it.date, it.startTime, it.endTime)
@@ -148,6 +151,7 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
             changes.forEach { written[it.shift.id] = ids[LocalDate.parse(it.shift.date)] }
         }
         db.withTransaction {
+            if (extra == null) previous?.let { db.dao().removePeriodBreaks(it.id) }
             previous?.let { db.dao().removeExtra(it.id, employee) }
             extra?.let { db.dao().saveExtra(it) }
             for ((shift, event, isNew) in pending) {
@@ -212,6 +216,15 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
         val date =
             provider?.let { java.time.Instant.ofEpochMilli(it.start).atZone(zone).toLocalDate() }
                 ?: originalDate
+        WorkPeriod(
+                shiftId,
+                date,
+                start,
+                end,
+                WorkSource.SCHEDULE,
+                breaks = db.dao().breaks(employee, shiftId).map { it.domain() },
+            )
+            .validateBreaks()
         val extras = db.dao().allExtraWork(employee).first()
         val expanded =
             extraHoursCell(

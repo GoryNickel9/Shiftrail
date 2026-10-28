@@ -50,6 +50,7 @@ data class AppState(
     val syncedShift: ShiftEntity? = null,
     val hoursPeriods: List<WorkPeriod> = emptyList(),
     val hoursExtras: List<ExtraWorkEntity> = emptyList(),
+    val hoursBreaks: List<UnpaidBreakEntity> = emptyList(),
     val hoursLoaded: Boolean = false,
     val hoursCalendarAvailable: Boolean = false,
     val updater: UpdateState = UpdateState(),
@@ -253,7 +254,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                                 ?: SettingsEntity(
                                     title = app.getString(R.string.default_event_title)
                                 ))
-                            .copy(saveRestDays = false),
+                            .let { saved ->
+                                saved.copy(
+                                    saveRestDays = false,
+                                    notificationMinutes =
+                                        normalizeNotificationMinutes(saved.notificationMinutes),
+                                )
+                            },
                     calendars =
                         if (hasCalendarPermission()) app.calendar.calendars() else emptyList(),
                 )
@@ -283,6 +290,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val periods: List<WorkPeriod>,
         val extras: List<ExtraWorkEntity>,
         val calendarAvailable: Boolean,
+        val breaks: List<UnpaidBreakEntity>,
     )
 
     fun loadHours(month: YearMonth) {
@@ -295,12 +303,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun watchHours(employee: String) {
         hoursJob?.cancel()
         mutable.update {
-            it.copy(hoursLoaded = false, hoursPeriods = emptyList(), hoursExtras = emptyList())
+            it.copy(
+                hoursLoaded = false,
+                hoursPeriods = emptyList(),
+                hoursExtras = emptyList(),
+                hoursBreaks = emptyList(),
+            )
         }
         hoursJob = viewModelScope.launch {
             combine(
                     dao.allRecordedShifts(employee),
                     dao.allExtraWork(employee),
+                    dao.allBreaks(employee),
                     calendarRefresh.flatMapLatest {
                         if (
                             ContextCompat.checkSelfPermission(
@@ -311,7 +325,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             app.calendar.changes().map { true }
                         else flowOf(false)
                     },
-                ) { shifts, extras, calendarAvailable ->
+                ) { shifts, extras, breaks, calendarAvailable ->
                     // A calendar change must not count the same employee/day twice.
                     val current =
                         shifts
@@ -351,9 +365,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         schedule.shifts
                             .filter { LocalDate.parse(it.date) >= LocalDate.now() }
                             .sortedWith(compareBy({ it.date }, { it.startTime.orEmpty() })),
-                        schedule.periods + extras.map { it.period() },
+                        (schedule.periods + extras.map { it.period() }).map { period ->
+                            period.copy(
+                                breaks =
+                                    breaks.filter { it.periodId == period.id }.map { it.domain() }
+                            )
+                        },
                         extras,
                         calendarAvailable,
+                        breaks,
                     )
                 }
                 .catch { error ->
@@ -364,19 +384,63 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
-                .collect { (upcoming, periods, extras, calendarAvailable) ->
+                .collect { (upcoming, periods, extras, calendarAvailable, breaks) ->
                     app.notifications.requestRefresh()
                     mutable.update {
                         it.copy(
                             hoursPeriods = periods,
                             upcoming = upcoming,
                             hoursExtras = extras,
+                            hoursBreaks = breaks,
                             hoursLoaded = true,
                             hoursCalendarAvailable = calendarAvailable,
                         )
                     }
                 }
         }
+    }
+
+    fun saveBreak(periodId: String, previousId: String?, pause: UnpaidBreak, onSaved: () -> Unit) =
+        launchWork {
+            val employee = requireNotNull(mutable.value.profile).id
+            val period =
+                requireNotNull(mutable.value.hoursPeriods.firstOrNull { it.id == periodId })
+            require(
+                pause.start.second == 0 &&
+                    pause.end.second == 0 &&
+                    pause.start.minute % 5 == 0 &&
+                    pause.end.minute % 5 == 0
+            ) {
+                "BREAK_INVALID"
+            }
+            app.database.withTransaction {
+                val existing = dao.breaks(employee, periodId)
+                require(previousId == null || existing.any { it.id == previousId }) {
+                    "BREAK_CHANGED"
+                }
+                period
+                    .copy(
+                        breaks = existing.filter { it.id != previousId }.map { it.domain() } + pause
+                    )
+                    .validateBreaks()
+                dao.saveBreak(
+                    UnpaidBreakEntity(
+                        previousId ?: UUID.randomUUID().toString(),
+                        employee,
+                        periodId,
+                        pause.start.toString(),
+                        pause.end.toString(),
+                    )
+                )
+            }
+            onSaved()
+        }
+
+    fun removeBreak(pause: UnpaidBreakEntity, onRemoved: () -> Unit) = launchWork {
+        val employee = requireNotNull(mutable.value.profile).id
+        require(pause.employeeId == employee)
+        dao.removeBreak(pause.id, employee)
+        onRemoved()
     }
 
     fun saveExtra(
@@ -479,6 +543,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 error.message == "CALENDAR_WRITE_FAILED" -> R.string.calendar_write_failed
                 error.message == "CALENDAR_EDIT_DURATION" -> R.string.calendar_long_event
                 error.message == "EXTRA_DUPLICATE" -> R.string.extra_duplicate
+                error.message == "BREAK_OUTSIDE_SHIFT" -> R.string.break_outside
+                error.message == "BREAK_OVERLAP" -> R.string.break_overlap
+                error.message == "BREAK_INVALID" || error.message == "BREAK_CHANGED" ->
+                    R.string.break_invalid
                 error.message == "CALENDAR_EXTRA_CONFLICT" || error.message == "EXTRA_CHANGED" ->
                     R.string.extra_calendar_conflict
                 error.message == "CALENDAR_OWNERSHIP_CHANGED" ||
@@ -498,7 +566,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun saveSettings(name: String, settings: SettingsEntity, onSaved: () -> Unit) = launchWork {
         require(name.isNotBlank() && name.trim().length <= 160)
         require(settings.reminderMinutes == null || settings.reminderMinutes in 0..10080)
-        require(settings.notificationMinutes in 0..10080)
+        require(validNotificationMinutes(settings.notificationMinutes))
         val profile =
             ProfileEntity(
                 mutable.value.profile?.id ?: UUID.randomUUID().toString(),

@@ -2,11 +2,21 @@ package it.turni.core
 
 import java.time.ZoneId
 
+const val MAX_NOTIFICATION_MINUTES = 24 * 60
+const val NOTIFICATION_MINUTE_STEP = 5
+
+fun validNotificationMinutes(value: Int) =
+    value in 0..MAX_NOTIFICATION_MINUTES && value % NOTIFICATION_MINUTE_STEP == 0
+
+fun normalizeNotificationMinutes(value: Int) =
+    value.coerceIn(0, MAX_NOTIFICATION_MINUTES) / NOTIFICATION_MINUTE_STEP *
+        NOTIFICATION_MINUTE_STEP
+
 data class WorkReminder(val key: String, val start: Long, val end: Long, val trigger: Long)
 
 /** One reminder per work day, using the same shift + extras envelope as the calendar. */
 fun workReminders(periods: List<WorkPeriod>, minutes: Int, zone: ZoneId): List<WorkReminder> {
-    require(minutes in 0..10080) { "INVALID_NOTIFICATION_MINUTES" }
+    require(validNotificationMinutes(minutes)) { "INVALID_NOTIFICATION_MINUTES" }
     return periods
         .groupBy { it.date }
         .values

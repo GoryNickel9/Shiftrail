@@ -156,10 +156,15 @@ fun NumberWheel(
 }
 
 @Composable
-fun TimeWheelDialog(value: LocalTime, onDismiss: () -> Unit, onChoose: (LocalTime) -> Unit) {
+fun TimeWheelDialog(
+    value: LocalTime,
+    onDismiss: () -> Unit,
+    minuteStep: Int = 15,
+    onChoose: (LocalTime) -> Unit,
+) {
     var hour by rememberSaveable { mutableIntStateOf(value.hour) }
     // Confirming is explicit: opening/cancelling never rounds an existing calendar time.
-    var minute by rememberSaveable { mutableIntStateOf(value.minute / 15 * 15) }
+    var minute by rememberSaveable { mutableIntStateOf(value.minute / minuteStep * minuteStep) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.choose_time)) },
@@ -180,7 +185,7 @@ fun TimeWheelDialog(value: LocalTime, onDismiss: () -> Unit, onChoose: (LocalTim
                 Text(":", style = MaterialTheme.typography.headlineMedium)
                 NumberWheel(
                     minute,
-                    listOf(0, 15, 30, 45),
+                    (0..59 step minuteStep).toList(),
                     stringResource(R.string.time_minutes),
                     "time_minute",
                 ) {

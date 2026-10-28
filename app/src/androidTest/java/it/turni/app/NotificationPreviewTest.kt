@@ -44,7 +44,7 @@ class NotificationPreviewTest {
                 "06:00",
                 1,
             )
-        val minutes = Duration.between(now, start).toMinutes().toInt() + 1
+        val minutes = ((Duration.between(now, start).toMinutes().toInt() + 5) / 5) * 5
         fun screenshot(name: String, region: Rect? = null) {
             val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
             val visible =

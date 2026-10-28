@@ -46,9 +46,15 @@ private fun colorLabel(color: Int?): String =
     }
 
 @Composable
-fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, onSaved: () -> Unit) {
-    var section by rememberSaveable { mutableStateOf<String?>(null) }
-    BackHandler(enabled = section != null) { section = null }
+fun SettingsScreen(
+    state: AppState,
+    vm: AppViewModel,
+    onCalendar: () -> Unit,
+    section: String?,
+    onSectionChange: (String?) -> Unit,
+    onSaved: () -> Unit,
+) {
+    BackHandler(enabled = section != null) { onSectionChange(null) }
     val settingsScroll = rememberLazyListState()
     LaunchedEffect(section) { settingsScroll.scrollToItem(0) }
     val focus = LocalFocusManager.current
@@ -64,6 +70,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
     var notificationVibration by rememberSaveable {
         mutableStateOf(state.settings.notificationVibration)
     }
+    var fullScreenAlarm by rememberSaveable { mutableStateOf(state.settings.fullScreenAlarm) }
     var notificationHours by rememberSaveable {
         mutableStateOf((state.settings.notificationMinutes / 60).toString())
     }
@@ -75,9 +82,10 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
     val validNotificationTime =
         hours != null &&
             minutes != null &&
-            hours in 0..168 &&
-            minutes in 0..59 &&
-            hours * 60 + minutes <= 10080
+            hours in 0..24 &&
+            minutes in 0..55 &&
+            minutes % 5 == 0 &&
+            hours * 60 + minutes <= 1440
     val backgroundPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri != null) vm.setBackground(uri)
@@ -88,7 +96,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (section != null)
-                IconButton(onClick = { section = null }, Modifier.testTag("settings_back")) {
+                IconButton(onClick = { onSectionChange(null) }, Modifier.testTag("settings_back")) {
                     Icon(painterResource(R.drawable.ic_back), stringResource(R.string.back))
                 }
             Text(
@@ -132,7 +140,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                             "menu_calendar",
                             icon = R.drawable.ic_calendar,
                         ) {
-                            section = "calendar"
+                            onSectionChange("calendar")
                             focus.clearFocus()
                         }
                     }
@@ -143,7 +151,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                             "menu_background",
                             icon = R.drawable.ic_image,
                         ) {
-                            section = "background"
+                            onSectionChange("background")
                             focus.clearFocus()
                         }
                     }
@@ -154,7 +162,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                             "menu_notifications",
                             icon = R.drawable.ic_bell,
                         ) {
-                            section = "notifications"
+                            onSectionChange("notifications")
                             focus.clearFocus()
                         }
                     }
@@ -165,7 +173,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                             "menu_updates",
                             icon = R.drawable.ic_update,
                         ) {
-                            section = "updates"
+                            onSectionChange("updates")
                             focus.clearFocus()
                         }
                     }
@@ -289,6 +297,8 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                         NotificationSettings(
                             enabled = notificationsEnabled,
                             onEnabled = { notificationsEnabled = it },
+                            fullScreenAlarm = fullScreenAlarm,
+                            onFullScreenAlarm = { fullScreenAlarm = it },
                             sound = notificationSound,
                             onSound = { notificationSound = it },
                             vibration = notificationVibration,
@@ -324,6 +334,7 @@ fun SettingsScreen(state: AppState, vm: AppViewModel, onCalendar: () -> Unit, on
                                     if (validNotificationTime)
                                         requireNotNull(hours) * 60 + requireNotNull(minutes)
                                     else state.settings.notificationMinutes,
+                                fullScreenAlarm = fullScreenAlarm,
                                 notificationSound = notificationSound,
                                 notificationVibration = notificationVibration,
                             ),

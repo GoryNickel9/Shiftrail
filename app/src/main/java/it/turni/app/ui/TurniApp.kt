@@ -32,6 +32,9 @@ fun TurniApp(vm: AppViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val context = LocalContext.current
+    var settingsSection by rememberSaveable { mutableStateOf<String?>(null) }
+    var homeReselection by rememberSaveable { mutableIntStateOf(0) }
+    var hoursReselection by rememberSaveable { mutableIntStateOf(0) }
     var calendarForSettings by rememberSaveable { mutableStateOf(false) }
     fun continueWithCalendar(forSettings: Boolean) {
         if (forSettings) vm.loadCalendars { nav.navigate("calendar-settings") }
@@ -150,7 +153,7 @@ fun TurniApp(vm: AppViewModel) {
                 )
             },
             bottomBar = {
-                if (route in listOf("home", "hours", "settings")) {
+                if (state.loaded && route in listOf("home", "hours", "settings")) {
                     NavigationBar {
                         listOf(
                                 Triple("home", R.string.home, R.drawable.ic_calendar),
@@ -159,6 +162,7 @@ fun TurniApp(vm: AppViewModel) {
                             )
                             .forEach { (destination, label, icon) ->
                                 NavigationBarItem(
+                                    modifier = Modifier.testTag("tab_$destination"),
                                     selected = route == destination,
                                     colors =
                                         NavigationBarItemDefaults.colors(
@@ -169,6 +173,11 @@ fun TurniApp(vm: AppViewModel) {
                                         ),
                                     enabled = !state.busy,
                                     onClick = {
+                                        if (destination == "settings") settingsSection = null
+                                        if (route == destination) {
+                                            if (destination == "home") homeReselection++
+                                            if (destination == "hours") hoursReselection++
+                                        }
                                         if (route != destination)
                                             nav.navigate(destination) {
                                                 popUpTo("home") { saveState = true }
@@ -207,8 +216,10 @@ fun TurniApp(vm: AppViewModel) {
                             HomeScreen(
                                 state,
                                 camera = {
-                                    if (state.profile == null) nav.navigate("settings")
-                                    else if (
+                                    if (state.profile == null) {
+                                        settingsSection = null
+                                        nav.navigate("settings") { launchSingleTop = true }
+                                    } else if (
                                         ContextCompat.checkSelfPermission(
                                             context,
                                             Manifest.permission.CAMERA,
@@ -218,24 +229,44 @@ fun TurniApp(vm: AppViewModel) {
                                     else cameraPermission.launch(Manifest.permission.CAMERA)
                                 },
                                 gallery = {
-                                    if (state.profile == null) nav.navigate("settings")
-                                    else
+                                    if (state.profile == null) {
+                                        settingsSection = null
+                                        nav.navigate("settings") { launchSingleTop = true }
+                                    } else
                                         gallery.launch(
                                             androidx.activity.result.PickVisualMediaRequest(
                                                 ActivityResultContracts.PickVisualMedia.ImageOnly
                                             )
                                         )
                                 },
-                                settings = { nav.navigate("settings") },
+                                settings = {
+                                    settingsSection = null
+                                    nav.navigate("settings")
+                                },
+                                reselection = homeReselection,
                             )
                         }
                         composable("settings") {
-                            SettingsScreen(state, vm, onCalendar = { requestCalendar(true) }) {
+                            SettingsScreen(
+                                state,
+                                vm,
+                                onCalendar = { requestCalendar(true) },
+                                section = settingsSection,
+                                onSectionChange = { settingsSection = it },
+                            ) {
                                 nav.popBackStack()
                             }
                         }
                         composable("hours") {
-                            HoursScreen(state, vm, onSettings = { nav.navigate("settings") })
+                            HoursScreen(
+                                state,
+                                vm,
+                                onSettings = {
+                                    settingsSection = null
+                                    nav.navigate("settings")
+                                },
+                                reselection = hoursReselection,
+                            )
                         }
                         composable("camera") {
                             CameraScreen(

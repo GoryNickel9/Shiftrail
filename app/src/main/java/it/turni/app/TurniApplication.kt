@@ -13,7 +13,12 @@ import kotlinx.coroutines.flow.collectLatest
 class TurniApplication : Application() {
     val database by lazy {
         Room.databaseBuilder(this, TurniDatabase::class.java, "turni.db")
-            .addMigrations(TurniDatabase.MIGRATION_1_2, TurniDatabase.MIGRATION_2_3)
+            .addMigrations(
+                TurniDatabase.MIGRATION_1_2,
+                TurniDatabase.MIGRATION_2_3,
+                TurniDatabase.MIGRATION_3_4,
+                TurniDatabase.MIGRATION_4_5,
+            )
             .build()
     }
     val calendar by lazy { CalendarRepository(contentResolver) }

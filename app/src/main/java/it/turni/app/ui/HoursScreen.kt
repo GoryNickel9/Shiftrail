@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -29,7 +30,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
+fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit, reselection: Int = 0) {
     var monthText by rememberSaveable { mutableStateOf(YearMonth.now().toString()) }
     val month = YearMonth.parse(monthText)
     var weekIndex by rememberSaveable(monthText) { mutableIntStateOf(-1) }
@@ -41,6 +42,29 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
     var pendingAdd by rememberSaveable { mutableStateOf(false) }
     var pendingDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
     var deletingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var breakPeriodId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingBreakId by rememberSaveable { mutableStateOf<String?>(null) }
+    var deletingBreakId by rememberSaveable { mutableStateOf<String?>(null) }
+    val scroll = rememberLazyListState()
+    var handled by rememberSaveable { mutableIntStateOf(reselection) }
+    LaunchedEffect(reselection) {
+        if (handled != reselection) {
+            weekIndex = -1
+            choosingMonth = false
+            choosingWeek = false
+            adding = false
+            editingId = null
+            deletingId = null
+            pendingEditId = null
+            pendingDeleteId = null
+            pendingAdd = false
+            breakPeriodId = null
+            editingBreakId = null
+            deletingBreakId = null
+            scroll.scrollToItem(0)
+            handled = reselection
+        }
+    }
     val editing = state.hoursPeriods.firstOrNull { it.id == editingId }
     val deleting = state.hoursExtras.firstOrNull { it.id == deletingId }
     val context = LocalContext.current
@@ -66,13 +90,16 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
     val weeks = WorkingHours.monthWeeks(month)
     val window = weeks.getOrNull(weekIndex) ?: HoursWindow(month.atDay(1), month.atEndOfMonth())
     val summary = WorkingHours.summarize(state.hoursPeriods, window)
+    val gross =
+        WorkingHours.summarize(state.hoursPeriods.map { it.copy(breaks = emptyList()) }, window)
     val dateFormat = DateTimeFormatter.ofPattern("dd/MM")
     val monthLabel = month.atDay(1).format(DateTimeFormatter.ofPattern("LLLL yyyy", Locale.ITALIAN))
     val previousMonth = stringResource(R.string.previous_month)
     val nextMonth = stringResource(R.string.next_month)
     Column(Modifier.fillMaxSize()) {
         LazyColumn(
-            Modifier.weight(1f).fillMaxWidth(),
+            Modifier.weight(1f).fillMaxWidth().testTag("hours_list"),
+            state = scroll,
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -186,6 +213,25 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                                     style = MaterialTheme.typography.headlineLarge,
                                 )
                             HorizontalDivider()
+                            if (state.hoursBreaks.isNotEmpty()) {
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    HoursTotalColumn(
+                                        stringResource(R.string.break_presence),
+                                        gross.totalMinutes,
+                                        "hours_gross",
+                                        Modifier.weight(1f),
+                                    )
+                                    HoursTotalColumn(
+                                        stringResource(R.string.unpaid_breaks),
+                                        gross.totalMinutes - summary.totalMinutes,
+                                        "hours_breaks",
+                                        Modifier.weight(1f),
+                                    )
+                                }
+                            }
                             Row(
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -289,6 +335,110 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
                                     )
                             }
                             Text(durationLabel(entry.minutes))
+                            val pauses = state.hoursBreaks.filter { it.periodId == period.id }
+                            if (pauses.isNotEmpty()) {
+                                HorizontalDivider()
+                                Text(
+                                    stringResource(R.string.unpaid_breaks),
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                                pauses.forEach { pause ->
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(Modifier.weight(1f)) {
+                                            val value = pause.domain()
+                                            Text(
+                                                "${value.start.toLocalTime()} → ${value.end.toLocalTime()}"
+                                            )
+                                            Text(
+                                                value.start.format(
+                                                    DateTimeFormatter.ofPattern("dd/MM")
+                                                ),
+                                                style = MaterialTheme.typography.labelMedium,
+                                            )
+                                            if (value !in period.validBreaks)
+                                                Text(
+                                                    stringResource(R.string.break_review),
+                                                    color = MaterialTheme.colorScheme.error,
+                                                )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                breakPeriodId = period.id
+                                                editingBreakId = pause.id
+                                            },
+                                            enabled = !state.busy,
+                                            modifier = Modifier.testTag("edit_break_${pause.id}"),
+                                        ) {
+                                            Icon(
+                                                painterResource(R.drawable.ic_pen),
+                                                stringResource(R.string.edit_break),
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { deletingBreakId = pause.id },
+                                            enabled = !state.busy,
+                                            modifier = Modifier.testTag("delete_break_${pause.id}"),
+                                        ) {
+                                            Icon(
+                                                painterResource(R.drawable.ic_trash),
+                                                stringResource(R.string.delete_break),
+                                                tint = MaterialTheme.colorScheme.error,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            TextButton(
+                                onClick = {
+                                    breakPeriodId = period.id
+                                    editingBreakId = null
+                                },
+                                enabled = !state.busy,
+                                modifier = Modifier.testTag("add_break_${period.id}"),
+                            ) {
+                                Text(stringResource(R.string.add_break))
+                            }
+                        }
+                    }
+                }
+                items(
+                    state.hoursBreaks.filter { pause ->
+                        state.hoursPeriods.none { it.id == pause.periodId } &&
+                            pause.domain().end > window.from.atStartOfDay() &&
+                            pause.domain().start < window.until.plusDays(1).atStartOfDay()
+                    },
+                    key = { "orphan_${it.id}" },
+                ) { pause ->
+                    OutlinedCard(Modifier.fillMaxWidth()) {
+                        Row(
+                            Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.unpaid_breaks))
+                                Text(
+                                    pause
+                                        .domain()
+                                        .start
+                                        .format(DateTimeFormatter.ofPattern("dd/MM HH:mm"))
+                                )
+                                Text(
+                                    stringResource(R.string.break_missing_shift),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                            IconButton(
+                                onClick = { deletingBreakId = pause.id },
+                                enabled = !state.busy,
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.ic_trash),
+                                    stringResource(R.string.delete_break),
+                                )
+                            }
                         }
                     }
                 }
@@ -363,6 +513,49 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit) {
             },
         )
     }
+    state.hoursPeriods
+        .firstOrNull { it.id == breakPeriodId }
+        ?.let { period ->
+            UnpaidBreakDialog(
+                period,
+                state.hoursBreaks.filter { it.periodId == period.id },
+                editingBreakId,
+                state.busy,
+                onDismiss = {
+                    breakPeriodId = null
+                    editingBreakId = null
+                },
+                onSave = { pause ->
+                    vm.saveBreak(period.id, editingBreakId, pause) {
+                        breakPeriodId = null
+                        editingBreakId = null
+                    }
+                },
+            )
+        }
+    state.hoursBreaks
+        .firstOrNull { it.id == deletingBreakId }
+        ?.let { pause ->
+            AlertDialog(
+                onDismissRequest = { if (!state.busy) deletingBreakId = null },
+                title = { Text(stringResource(R.string.delete_break)) },
+                text = { Text(stringResource(R.string.break_delete_message)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = { vm.removeBreak(pause) { deletingBreakId = null } },
+                        enabled = !state.busy,
+                        modifier = Modifier.testTag("confirm_delete_break"),
+                    ) {
+                        Text(stringResource(R.string.delete))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { deletingBreakId = null }, enabled = !state.busy) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                },
+            )
+        }
 }
 
 @Composable

@@ -68,7 +68,9 @@ class AppearanceUiTest {
             compose.onNodeWithTag("settings_back").performClick()
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("menu_updates"))
             compose.onNodeWithTag("menu_updates").performClick()
-            compose.onNodeWithText("Versione installata: 1.0.2").assertIsDisplayed()
+            compose
+                .onNodeWithText("Versione installata: ${BuildConfig.VERSION_NAME}")
+                .assertIsDisplayed()
             screenshot("updates")
             compose.onNodeWithText("Home").performClick()
             screenshot("home")

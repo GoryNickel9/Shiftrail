@@ -30,6 +30,8 @@ import it.turni.app.data.SettingsEntity
 fun NotificationSettings(
     enabled: Boolean,
     onEnabled: (Boolean) -> Unit,
+    fullScreenAlarm: Boolean,
+    onFullScreenAlarm: (Boolean) -> Unit,
     sound: Boolean,
     onSound: (Boolean) -> Unit,
     vibration: Boolean,
@@ -86,7 +88,7 @@ fun NotificationSettings(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 NumberWheel(
                     hours.toIntOrNull() ?: 0,
-                    (0..168).toList(),
+                    (0..24).toList(),
                     stringResource(R.string.notification_hours),
                     "notification_hours",
                 ) {
@@ -94,7 +96,7 @@ fun NotificationSettings(
                 }
                 NumberWheel(
                     minutes.toIntOrNull() ?: 0,
-                    (0..59).toList(),
+                    (0..55 step 5).toList(),
                     stringResource(R.string.notification_minutes),
                     "notification_minutes",
                 ) {
@@ -108,6 +110,34 @@ fun NotificationSettings(
                     color = MaterialTheme.colorScheme.error,
                 )
             NotificationToggle(
+                stringResource(R.string.full_screen_alarm),
+                fullScreenAlarm,
+                "full_screen_alarm",
+                onFullScreenAlarm,
+            )
+            if (fullScreenAlarm) {
+                Text(
+                    stringResource(R.string.full_screen_alarm_note),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (!notifications.canUseFullScreenAlarm()) {
+                    OutlinedButton(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= 34)
+                                open(
+                                    Intent(
+                                        Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                                        Uri.parse("package:${context.packageName}"),
+                                    )
+                                )
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("allow_full_screen_alarm"),
+                    ) {
+                        Text(stringResource(R.string.allow_full_screen_alarm))
+                    }
+                }
+            }
+            NotificationToggle(
                 stringResource(R.string.notification_sound),
                 sound,
                 "notification_sound",
@@ -120,9 +150,11 @@ fun NotificationSettings(
                 onVibration,
             )
             val channel =
-                notifications.ensureChannel(
-                    SettingsEntity(notificationSound = sound, notificationVibration = vibration)
-                )
+                if (fullScreenAlarm) notifications.ensureAlarmChannel()
+                else
+                    notifications.ensureChannel(
+                        SettingsEntity(notificationSound = sound, notificationVibration = vibration)
+                    )
             if (!canNotify || channel.importance == NotificationManager.IMPORTANCE_NONE)
                 Text(
                     stringResource(R.string.notifications_blocked),

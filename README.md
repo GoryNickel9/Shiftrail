@@ -6,15 +6,17 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 ## Download e release
 
-**Shiftrail 1.0.2** rinomina la sezione Ore in **Orario** e usa le rotelle anche per correggere i turni dopo l’OCR e impostare l’anticipo delle notifiche. Vedi le [note della versione](docs/releases/1.0.2.md) e i [dettagli sugli orari](docs/TIME_INPUT.md).
+**Shiftrail 1.0.3** aggiunge le **pause non retribuite** in Orario, la **sveglia a schermo intero** nelle Notifiche e corregge il ritorno ai menu. L’anticipo degli avvisi è limitato a 24 ore, con minuti ogni cinque. Vedi le [note della versione](docs/releases/1.0.3.md), le [pause](docs/UNPAID_BREAKS.md) e la [sveglia](docs/NOTIFICATIONS_ALARM.md).
 
 [Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
 
 Installa l’APK come aggiornamento senza disinstallare l’app, per mantenere i dati. Dalla versione 0.4.0 Shiftrail controlla le nuove release a ogni ritorno nell’app: una versione successiva compatibile deve essere installata per continuare. La richiesta viene conservata anche dopo la chiusura. Il controllo manuale resta in **Impostazioni → Aggiornamenti**. Protocollo, firma e pubblicazione sono descritti in [aggiornamenti](docs/UPDATES.md).
 
-<img src="docs/images/release-1.0.2/settings.png" alt="Menu delle impostazioni Shiftrail 1.0.2" width="240"> <img src="docs/images/release-1.0.2/background-dark.png" alt="Tema scuro nelle impostazioni Sfondo" width="240"> <img src="docs/images/release-1.0.2/hours-month.png" alt="Orario con riepilogo mensile e modifica a icona" width="240">
+<img src="docs/images/release-1.0.2/settings.png" alt="Menu delle impostazioni Shiftrail 1.0.2" width="240"> <img src="docs/images/release-1.0.3/break-editor.png" alt="Inserimento di una pausa non retribuita" width="240"> <img src="docs/images/release-1.0.3/break-saved.png" alt="Orario con presenza, pause e ore nette" width="240">
 
 ## Utilizzo
+
+Le pause sono integrate nell’app; il [mockup interattivo](design/mockup-pause-orario/index.html) resta come riferimento del progetto. La [pianificazione delle ferie](docs/FERIE_DESIGN.md) è ancora una proposta.
 
 1. Apri **Impostazioni** e inserisci **Nome e cognome** come appaiono sul tabellone. Apri **Calendario** per scegliere la destinazione e il colore dei turni di lavoro.
 2. Scatta una foto o scegli un’immagine con il Photo Picker. Trascina i quattro angoli del crop mantenendo visibili nome, giorni e date.
@@ -32,7 +34,7 @@ In **Orario**, accanto a **Straordinari**, **Ore notturne** indica i minuti lavo
 
 In **Impostazioni → Sfondo** puoi scegliere il tema **Chiaro**, **Scuro** o **Segui il sistema**, oltre a una foto personale o allo sfondo predefinito. La modifica si applica subito; l’immagine viene ridimensionata e conservata nella memoria privata dell’app.
 
-In **Impostazioni → Notifiche** puoi abilitare un avviso prima del lavoro, impostare ore e minuti di anticipo e scegliere suono e vibrazione. Premi **Salva** per applicare. Le notifiche sono inizialmente disattivate e distinte dai promemoria del calendario. Android può richiedere il permesso per notifiche e avvisi precisi; senza quest’ultimo il promemoria può arrivare in ritardo. Dettagli e limiti in [notifiche e sfondo](docs/PERSONALIZATION_NOTIFICATIONS.md).
+In **Impostazioni → Notifiche** puoi abilitare un avviso prima del lavoro, impostare fino a 24 ore di anticipo con minuti ogni cinque e scegliere suono e vibrazione. Puoi anche attivare la sveglia a schermo intero. Premi **Salva** per applicare. Le notifiche sono inizialmente disattivate e distinte dai promemoria del calendario. Android può richiedere il permesso per notifiche e avvisi precisi; senza quest’ultimo il promemoria può arrivare in ritardo. Dettagli e limiti in [notifiche e sfondo](docs/PERSONALIZATION_NOTIFICATIONS.md).
 
 Il nome resta **Shiftrail**. La nuova icona adattiva usa una S a forma di percorso e include una variante monocromatica per la barra di stato. I launcher compatibili mostrano il pallino quando è presente una notifica attiva. In **Impostazioni → Aggiornamenti** puoi aderire alla beta: le prerelease sono facoltative e vengono proposte solo a chi aderisce al canale. Uscire conserva i dati e torna a cercare soltanto versioni stabili, senza downgrade automatici. Vedi [branding](docs/BRANDING.md) e [canali di aggiornamento](docs/UPDATES.md).
 

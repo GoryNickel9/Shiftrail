@@ -5,6 +5,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import it.turni.core.*
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import kotlinx.coroutines.flow.Flow
 
@@ -87,6 +88,7 @@ data class SettingsEntity(
     @ColumnInfo(defaultValue = "30") val notificationMinutes: Int = 30,
     @ColumnInfo(defaultValue = "1") val notificationSound: Boolean = true,
     @ColumnInfo(defaultValue = "1") val notificationVibration: Boolean = true,
+    @ColumnInfo(defaultValue = "0") val fullScreenAlarm: Boolean = false,
 )
 
 @Entity(
@@ -113,6 +115,20 @@ data class ExtraWorkEntity(
 
 @Dao
 interface TurniDao {
+    @Query("SELECT * FROM unpaid_breaks WHERE employeeId = :employee ORDER BY startDateTime, id")
+    fun allBreaks(employee: String): Flow<List<UnpaidBreakEntity>>
+
+    @Query("SELECT * FROM unpaid_breaks WHERE employeeId = :employee AND periodId = :period")
+    suspend fun breaks(employee: String, period: String): List<UnpaidBreakEntity>
+
+    @Upsert suspend fun saveBreak(pause: UnpaidBreakEntity)
+
+    @Query("DELETE FROM unpaid_breaks WHERE id = :id AND employeeId = :employee")
+    suspend fun removeBreak(id: String, employee: String)
+
+    @Query("DELETE FROM unpaid_breaks WHERE periodId = :period")
+    suspend fun removePeriodBreaks(period: String)
+
     @Query("SELECT * FROM profiles LIMIT 1") suspend fun profile(): ProfileEntity?
 
     @Upsert suspend fun saveProfile(profile: ProfileEntity)
@@ -158,7 +174,13 @@ interface TurniDao {
     @Query("SELECT * FROM shifts WHERE id = :id AND employeeId = :employee")
     suspend fun shift(id: String, employee: String): ShiftEntity?
 
-    @Query("DELETE FROM shifts WHERE id = :id") suspend fun removeShift(id: String)
+    @Query("DELETE FROM shifts WHERE id = :id") suspend fun deleteShift(id: String)
+
+    @Transaction
+    suspend fun removeShift(id: String) {
+        removePeriodBreaks(id)
+        deleteShift(id)
+    }
 
     @Query(
         "SELECT * FROM shifts WHERE employeeId = :employee AND date BETWEEN :fromDate AND :untilDate ORDER BY date"
@@ -200,6 +222,17 @@ interface TurniDao {
     suspend fun removeExtra(id: String, employee: String)
 }
 
+@Entity(tableName = "unpaid_breaks", indices = [Index(value = ["employeeId", "periodId"])])
+data class UnpaidBreakEntity(
+    @PrimaryKey val id: String,
+    val employeeId: String,
+    val periodId: String,
+    val startDateTime: String,
+    val endDateTime: String,
+) {
+    fun domain() = UnpaidBreak(LocalDateTime.parse(startDateTime), LocalDateTime.parse(endDateTime))
+}
+
 @Database(
     entities =
         [
@@ -209,14 +242,38 @@ interface TurniDao {
             MappingEntity::class,
             SettingsEntity::class,
             ExtraWorkEntity::class,
+            UnpaidBreakEntity::class,
         ],
-    version = 3,
+    version = 5,
     exportSchema = true,
 )
 abstract class TurniDatabase : RoomDatabase() {
     abstract fun dao(): TurniDao
 
     companion object {
+        val MIGRATION_4_5 =
+            object : Migration(4, 5) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS unpaid_breaks (id TEXT NOT NULL, employeeId TEXT NOT NULL, periodId TEXT NOT NULL, startDateTime TEXT NOT NULL, endDateTime TEXT NOT NULL, PRIMARY KEY(id))"
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_unpaid_breaks_employeeId_periodId ON unpaid_breaks (employeeId, periodId)"
+                    )
+                }
+            }
+        val MIGRATION_3_4 =
+            object : Migration(3, 4) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE settings ADD COLUMN fullScreenAlarm INTEGER NOT NULL DEFAULT 0"
+                    )
+                    db.execSQL(
+                        "UPDATE settings SET notificationMinutes = (MAX(0, MIN(1440, notificationMinutes)) / 5) * 5"
+                    )
+                }
+            }
+
         val MIGRATION_2_3 =
             object : Migration(2, 3) {
                 override fun migrate(db: SupportSQLiteDatabase) {

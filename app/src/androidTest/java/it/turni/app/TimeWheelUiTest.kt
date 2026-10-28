@@ -19,7 +19,7 @@ class TimeWheelUiTest {
         var saved = LocalTime.of(8, 7)
         compose.runOnUiThread {
             compose.activity.setContent {
-                ShiftrailTheme { TimeWheelDialog(saved, {}, { saved = it }) }
+                ShiftrailTheme { TimeWheelDialog(saved, {}, onChoose = { saved = it }) }
             }
         }
         compose.onNodeWithTag("time_hour").performSemanticsAction(SemanticsActions.SetProgress) {
@@ -39,7 +39,9 @@ class TimeWheelUiTest {
         var cancelled = false
         compose.runOnUiThread {
             compose.activity.setContent {
-                ShiftrailTheme { TimeWheelDialog(saved, { cancelled = true }, { saved = it }) }
+                ShiftrailTheme {
+                    TimeWheelDialog(saved, { cancelled = true }, onChoose = { saved = it })
+                }
             }
         }
         compose.onNodeWithText("Annulla").performClick()
@@ -52,7 +54,7 @@ class TimeWheelUiTest {
         var saved = LocalTime.of(8, 7)
         compose.runOnUiThread {
             compose.activity.setContent {
-                ShiftrailTheme { TimeWheelDialog(saved, {}, { saved = it }) }
+                ShiftrailTheme { TimeWheelDialog(saved, {}, onChoose = { saved = it }) }
             }
         }
         compose.onNodeWithTag("time_minute").performTouchInput { swipeUp(durationMillis = 400) }

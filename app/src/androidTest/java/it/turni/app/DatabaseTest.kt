@@ -13,6 +13,54 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class DatabaseTest {
+    @Test
+    fun migrationFromFourPreservesDataAndPersistsBreaks() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "migration-breaks-test.db"
+        try {
+            migrations.createDatabase(name, 4).apply {
+                execSQL(
+                    "INSERT INTO extra_work VALUES ('extra','employee','2026-10-28','22:00','06:00',1)"
+                )
+                close()
+            }
+            migrations.runMigrationsAndValidate(name, 5, true, TurniDatabase.MIGRATION_4_5).close()
+            val pause =
+                UnpaidBreakEntity(
+                    "pause",
+                    "employee",
+                    "extra",
+                    "2026-10-29T02:00",
+                    "2026-10-29T02:30",
+                )
+            Room.databaseBuilder(context, TurniDatabase::class.java, name).build().let { db ->
+                try {
+                    assertNotNull(db.dao().findExtra("employee", "2026-10-28", "22:00", "06:00"))
+                    db.dao().saveBreak(pause)
+                    db.dao().saveBreak(pause.copy(endDateTime = "2026-10-29T03:00"))
+                } finally {
+                    db.close()
+                }
+            }
+            Room.databaseBuilder(context, TurniDatabase::class.java, name).build().let { db ->
+                try {
+                    assertEquals(
+                        listOf(pause.copy(endDateTime = "2026-10-29T03:00")),
+                        db.dao().breaks("employee", "extra"),
+                    )
+                    db.dao().removeBreak("pause", "different-employee")
+                    assertEquals(1, db.dao().breaks("employee", "extra").size)
+                    db.dao().removePeriodBreaks("extra")
+                    assertTrue(db.dao().breaks("employee", "extra").isEmpty())
+                } finally {
+                    db.close()
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
     @get:Rule
     val migrations =
         MigrationTestHelper(
@@ -37,10 +85,12 @@ class DatabaseTest {
             migrations
                 .runMigrationsAndValidate(
                     name,
-                    3,
+                    5,
                     true,
                     TurniDatabase.MIGRATION_1_2,
                     TurniDatabase.MIGRATION_2_3,
+                    TurniDatabase.MIGRATION_3_4,
+                    TurniDatabase.MIGRATION_4_5,
                 )
                 .close()
             val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()
@@ -120,7 +170,16 @@ class DatabaseTest {
                 )
                 close()
             }
-            migrations.runMigrationsAndValidate(name, 3, true, TurniDatabase.MIGRATION_2_3).close()
+            migrations
+                .runMigrationsAndValidate(
+                    name,
+                    5,
+                    true,
+                    TurniDatabase.MIGRATION_2_3,
+                    TurniDatabase.MIGRATION_3_4,
+                    TurniDatabase.MIGRATION_4_5,
+                )
+                .close()
             val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()
             try {
                 val settings = requireNotNull(db.dao().settings())
@@ -132,6 +191,47 @@ class DatabaseTest {
                 assertFalse(settings.notificationsEnabled)
                 assertEquals(30, settings.notificationMinutes)
                 assertNotNull(db.dao().findExtra("employee", "2026-10-27", "00:00", "06:00"))
+            } finally {
+                db.close()
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun migrationFromThreeBoundsNoticesAndLeavesAlarmOff() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "migration-alarm-test.db"
+        try {
+            migrations.createDatabase(name, 3).apply {
+                execSQL(
+                    "INSERT INTO settings (id, calendarId, title, location, description, reminderMinutes, eventColor, developer, notificationMinutes) VALUES (1,42,'Lavoro','','',30,1234,0,10080)"
+                )
+                execSQL(
+                    "INSERT INTO extra_work VALUES ('preserved','employee','2026-10-27','08:00','09:00',1)"
+                )
+                close()
+            }
+            migrations
+                .runMigrationsAndValidate(
+                    name,
+                    5,
+                    true,
+                    TurniDatabase.MIGRATION_3_4,
+                    TurniDatabase.MIGRATION_4_5,
+                )
+                .close()
+            val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()
+            try {
+                val settings = requireNotNull(db.dao().settings())
+                assertEquals(1440, settings.notificationMinutes)
+                assertFalse(settings.fullScreenAlarm)
+                assertEquals(42L, settings.calendarId)
+                assertEquals(1234, settings.eventColor)
+                assertNotNull(db.dao().findExtra("employee", "2026-10-27", "08:00", "09:00"))
+                db.dao().saveSettings(settings.copy(fullScreenAlarm = true))
+                assertTrue(requireNotNull(db.dao().settings()).fullScreenAlarm)
             } finally {
                 db.close()
             }

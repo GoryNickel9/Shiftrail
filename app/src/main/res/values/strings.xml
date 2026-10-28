@@ -148,7 +148,22 @@
     <string name="hours_calendar_permission">Consenti accesso al calendario</string>
     <string name="hours_ends_on">Fine il %1$s</string>
     <string name="hours_note">Turni già salvati nel calendario e straordinari inseriti da te.</string>
-    <string name="hours_total">Totale</string>
+    <string name="hours_total">Ore nette</string>
+    <string name="unpaid_breaks">Pause non retribuite</string>
+    <string name="break_presence">Presenza</string>
+    <string name="add_break">Aggiungi pausa</string>
+    <string name="edit_break">Modifica pausa</string>
+    <string name="delete_break">Elimina pausa</string>
+    <string name="save_break">Salva pausa</string>
+    <string name="break_start">Inizio pausa</string>
+    <string name="break_end">Fine pausa</string>
+    <string name="break_outside">La pausa deve essere compresa nel turno. Correggi la pausa prima di modificare questi orari.</string>
+    <string name="break_overlap">Le pause non possono sovrapporsi.</string>
+    <string name="break_invalid">Controlla gli orari della pausa, con minuti ogni cinque.</string>
+    <string name="break_review">Da rivedere: gli orari del turno sono cambiati. Questa pausa non viene sottratta.</string>
+    <string name="break_missing_shift">Turno non più disponibile. Questa pausa non viene sottratta.</string>
+    <string name="break_delete_message">Le ore della pausa torneranno nel conteggio. Il calendario resta invariato.</string>
+    <string name="break_calendar_note">Nel calendario resta l’intervallo completo del turno. La pausa riduce le ore nette e, quando applicabile, quelle notturne.</string>
     <string name="hours_work">Da turni</string>
     <string name="hours_extra">Straordinari</string>
     <string name="hours_duration">%1$d h %2$02d min</string>
@@ -206,8 +221,8 @@
     <string name="notifications_note">Un avviso per ogni giornata di lavoro salvata, con data e orario aggiornati, anche per gli extra. Le X non generano notifiche. Premi Salva per applicare. I promemoria del calendario restano separati: disattivali sopra se ricevi avvisi doppi.</string>
     <string name="notification_hours">Ore prima</string>
     <string name="notification_minutes">Minuti prima</string>
-    <string name="notification_time_note">Da 0 a 168 ore, con minuti da 0 a 59, fino a 7 giorni. 0 ore e 0 minuti: all’inizio del lavoro.</string>
-    <string name="notification_time_invalid">Inserisci ore e minuti validi, fino a un totale di 7 giorni.</string>
+    <string name="notification_time_note">Da 0 a 24 ore, con minuti ogni 5 minuti. 0 ore e 0 minuti: all’inizio del lavoro.</string>
+    <string name="notification_time_invalid">Scegli un anticipo massimo di 24 ore, con minuti ogni 5 minuti.</string>
     <string name="notification_sound">Suono</string>
     <string name="notification_vibration">Vibrazione</string>
     <string name="notifications_blocked">Android ha bloccato le notifiche. Abilitale nelle impostazioni di sistema.</string>
@@ -258,4 +273,12 @@
     <string name="calendar_local_short">Solo su questo dispositivo</string>
     <string name="calendar_read_only_short">Solo lettura</string>
     <string name="analysis_in_progress">Analisi immagine</string>
+    <string name="full_screen_alarm">Sveglia a schermo intero</string>
+    <string name="full_screen_alarm_note">Suona all’anticipo scelto e si ferma con Ferma. Richiede avvisi precisi; Android decide se aprire lo schermo intero o mostrare una notifica.</string>
+    <string name="allow_full_screen_alarm">Consenti schermo intero</string>
+    <string name="alarm_channel">Sveglie dei turni</string>
+    <string name="alarm_title">Sveglia di lavoro</string>
+    <string name="alarm_shift_start">Inizio turno: %1$s</string>
+    <string name="stop_alarm">Ferma sveglia</string>
+    <string name="alarm_start_label">Inizio turno</string>
 </resources>

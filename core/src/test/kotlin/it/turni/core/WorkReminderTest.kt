@@ -33,22 +33,32 @@ class WorkReminderTest {
     }
 
     @Test
-    fun extraOnlyAndMidnightWorkSupportZeroAndSevenDayNotice() {
+    fun extraOnlyAndMidnightWorkSupportZeroAndTwentyFourHourNotice() {
         val extra = listOf(period("extra", "00:00", "06:00", WorkSource.EXTRA))
         assertEquals(
             workReminders(extra, 0, zone).single().start,
             workReminders(extra, 0, zone).single().trigger,
         )
         assertEquals(
-            10080 * 60_000L,
-            workReminders(extra, 10080, zone).single().let { it.start - it.trigger },
+            1440 * 60_000L,
+            workReminders(extra, 1440, zone).single().let { it.start - it.trigger },
         )
         assertTrue(workReminders(emptyList(), 30, zone).isEmpty())
-        for (invalid in listOf(-1, 10081, Int.MAX_VALUE)) assertThrows(
+        for (invalid in listOf(-1, 1, 4, 6, 1441, 1445, Int.MAX_VALUE)) assertThrows(
             IllegalArgumentException::class.java
         ) {
             workReminders(extra, invalid, zone)
         }
+    }
+
+    @Test
+    fun legacyNotificationMinutesAreBoundedAndRoundedDown() {
+        for ((before, after) in
+            listOf(-1 to 0, 7 to 5, 59 to 55, 1441 to 1440, 10080 to 1440, Int.MAX_VALUE to 1440)) {
+            assertEquals(after, normalizeNotificationMinutes(before))
+            assertTrue(validNotificationMinutes(after))
+        }
+        for (minutes in 0..1440 step 5) assertTrue(validNotificationMinutes(minutes))
     }
 
     @Test

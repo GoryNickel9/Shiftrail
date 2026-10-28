@@ -106,10 +106,12 @@ class CalendarUpgradeTest {
                     migrations
                         .runMigrationsAndValidate(
                             name,
-                            3,
+                            5,
                             true,
                             TurniDatabase.MIGRATION_1_2,
                             TurniDatabase.MIGRATION_2_3,
+                            TurniDatabase.MIGRATION_3_4,
+                            TurniDatabase.MIGRATION_4_5,
                         )
                         .close()
                     val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()

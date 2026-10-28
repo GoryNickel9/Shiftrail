@@ -77,7 +77,7 @@ class PersonalizationUiTest {
             compose.onNodeWithTag("notification_hours").performScrollTo().performSemanticsAction(
                 SemanticsActions.SetProgress
             ) {
-                it(168f)
+                it(24f)
             }
             compose.onNodeWithTag("notification_minutes").performSemanticsAction(
                 SemanticsActions.SetProgress
@@ -99,7 +99,7 @@ class PersonalizationUiTest {
             compose.onNodeWithTag("notification_minutes").performSemanticsAction(
                 SemanticsActions.SetProgress
             ) {
-                it(15f)
+                it(3f)
             }
             if (oldSettings.notificationSound)
                 compose.onNodeWithTag("notification_sound").performScrollTo().performClick()
@@ -119,7 +119,7 @@ class PersonalizationUiTest {
                 .assert(
                     SemanticsMatcher.expectValue(
                         SemanticsProperties.ProgressBarRangeInfo,
-                        ProgressBarRangeInfo(1f, 0f..168f, 167),
+                        ProgressBarRangeInfo(1f, 0f..24f, 23),
                     )
                 )
             compose.onNodeWithText("Salva").performClick()
@@ -145,7 +145,7 @@ class PersonalizationUiTest {
                 .assert(
                     SemanticsMatcher.expectValue(
                         SemanticsProperties.ProgressBarRangeInfo,
-                        ProgressBarRangeInfo(15f, 0f..59f, 58),
+                        ProgressBarRangeInfo(3f, 0f..11f, 10),
                     )
                 )
             compose.onNodeWithTag("settings_back").performClick()

@@ -42,6 +42,10 @@ class ShiftNotifications(private val app: TurniApplication) {
 
     fun canScheduleExactly() = Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms()
 
+    fun canUseFullScreenAlarm() = Build.VERSION.SDK_INT < 34 || manager.canUseFullScreenIntent()
+
+    fun ensureAlarmChannel() = ShiftAlarmService.ensureChannel(app)
+
     fun channelId(settings: SettingsEntity) =
         "work-${settings.notificationSound}-${settings.notificationVibration}"
 
@@ -97,6 +101,7 @@ class ShiftNotifications(private val app: TurniApplication) {
         val previous = preferences.getStringSet("scheduled", emptySet()).orEmpty().toSet()
         if (!settings.notificationsEnabled || !canNotify()) {
             previous.forEach { alarms.cancel(pending(it)) }
+            ShiftAlarmService.stop(app)
             manager.cancelAll()
             preferences.edit().remove("scheduled").apply()
             return@withLock
@@ -145,7 +150,18 @@ class ShiftNotifications(private val app: TurniApplication) {
                 base + extras.map { it.period() }
             }
         val now = System.currentTimeMillis()
-        val reminders = workReminders(periods, settings.notificationMinutes, ZoneId.systemDefault())
+        val reminders =
+            workReminders(
+                periods,
+                normalizeNotificationMinutes(settings.notificationMinutes),
+                ZoneId.systemDefault(),
+            )
+        ShiftAlarmState.active.value?.let { active ->
+            if (
+                !settings.fullScreenAlarm || reminders.none { it.key == active.key && it.end > now }
+            )
+                ShiftAlarmService.stop(app)
+        }
         val delivered = preferences.getStringSet("delivered", emptySet()).orEmpty().toMutableSet()
         delivered.retainAll(reminders.filter { it.end > now }.map { it.key }.toSet())
         val due = reminders.firstOrNull {
@@ -193,6 +209,20 @@ class ShiftNotifications(private val app: TurniApplication) {
 
     private fun show(reminder: WorkReminder, settings: SettingsEntity) {
         if (!canNotify()) return
+        if (
+            settings.fullScreenAlarm &&
+                canScheduleExactly() &&
+                ensureAlarmChannel().importance != NotificationManager.IMPORTANCE_NONE
+        ) {
+            try {
+                ShiftAlarmService.start(app, reminder)
+                return
+            } catch (error: IllegalStateException) {
+                Log.w("ShiftNotifications", "Alarm service unavailable; using reminder", error)
+            } catch (error: SecurityException) {
+                Log.w("ShiftNotifications", "Alarm access unavailable; using reminder", error)
+            }
+        }
         val format = DateTimeFormatter.ofPattern("dd/MM HH:mm").withZone(ZoneId.systemDefault())
         val body =
             app.getString(

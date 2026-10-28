@@ -27,7 +27,7 @@ class ShiftNotificationsTest {
         val oldSettings = dao.settings() ?: SettingsEntity()
         val oldProfile = dao.profile()
         val profile = ProfileEntity("notification-test", "Test Notifiche", "")
-        val start = LocalDateTime.now().minusMinutes(1).withSecond(0).withNano(0)
+        val start = LocalDateTime.now().minusMinutes(1).withSecond(7).withNano(0)
         val due =
             ExtraWorkEntity(
                 "notification-due",
@@ -48,7 +48,13 @@ class ShiftNotificationsTest {
                     arrayOf(oldProfile.id),
                 )
             dao.saveProfile(profile)
-            dao.saveSettings(oldSettings.copy(notificationsEnabled = true, notificationMinutes = 0))
+            dao.saveSettings(
+                oldSettings.copy(
+                    notificationsEnabled = true,
+                    notificationMinutes = 0,
+                    fullScreenAlarm = false,
+                )
+            )
             dao.saveExtra(due)
             dao.saveExtra(future)
             app.notifications.refresh()

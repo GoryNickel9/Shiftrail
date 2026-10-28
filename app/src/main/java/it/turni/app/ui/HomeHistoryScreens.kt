@@ -3,8 +3,10 @@ package it.turni.app.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -19,10 +21,20 @@ fun HomeScreen(
     camera: () -> Unit,
     gallery: () -> Unit,
     settings: () -> Unit,
+    reselection: Int = 0,
 ) {
+    val scroll = rememberLazyListState()
+    var handled by rememberSaveable { mutableIntStateOf(reselection) }
+    LaunchedEffect(reselection) {
+        if (handled != reselection) {
+            scroll.scrollToItem(0)
+            handled = reselection
+        }
+    }
     val next = state.upcoming.firstOrNull { it.type == "WORK_SHIFT" }
     LazyColumn(
-        Modifier.fillMaxSize(),
+        Modifier.fillMaxSize().testTag("home_list"),
+        state = scroll,
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

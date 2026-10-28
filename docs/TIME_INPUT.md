@@ -1,5 +1,7 @@
 # Inserimento degli orari
 
+Dalla 1.0.3 le pause usano rotelle con minuti ogni cinque; anche le notifiche hanno minuti ogni cinque e massimo 24 ore. I dettagli sotto documentano la precedente 1.0.2. Vedi [pause](UNPAID_BREAKS.md) e [notifiche](NOTIFICATIONS_ALARM.md).
+
 Modifiche introdotte nella release 1.0.2, build 19.
 
 La sezione Ore si chiama Orario, sia nella navigazione sia nel titolo. Le etichette che indicano un'unità di misura, come Ore prima e Ore notturne, mantengono il loro significato.
