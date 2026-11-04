@@ -6,7 +6,7 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 ## Download e release
 
-**Shiftrail 1.0.4** corregge il prossimo turno in Home, allinea data e azioni in Orario e semplifica Impostazioni e notifiche. Restano disponibili pause non retribuite e sveglia a schermo intero. Vedi le [note della versione](docs/releases/1.0.4.md), il [comportamento della Home](docs/HOME_AND_NOTIFICATIONS.md) e le [pause](docs/UNPAID_BREAKS.md).
+**Shiftrail 1.0.5** aggiunge l’icona **The World** scelta dall’utente, con il bordo giallo completo. L’aggiornamento si scarica dall’app e conserva i dati esistenti. Vedi le [note della versione](docs/releases/1.0.5.md), il [branding](docs/BRANDING.md) e il [sistema di aggiornamento](docs/UPDATES.md).
 
 [Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
 
@@ -36,7 +36,7 @@ In **Impostazioni → Sfondo** puoi scegliere il tema **Chiaro**, **Scuro** o **
 
 In **Impostazioni → Notifiche** puoi abilitare un avviso prima del lavoro, impostare fino a 24 ore di anticipo con minuti ogni cinque e scegliere suono e vibrazione. Puoi anche attivare la sveglia a schermo intero. Premi **Salva** per applicare. Le notifiche sono inizialmente disattivate e distinte dai promemoria del calendario. Android può richiedere il permesso per notifiche e avvisi precisi; senza quest’ultimo il promemoria può arrivare in ritardo. Dettagli e limiti in [notifiche e sfondo](docs/PERSONALIZATION_NOTIFICATIONS.md).
 
-Il nome resta **Shiftrail**. La nuova icona adattiva usa una S a forma di percorso e include una variante monocromatica per la barra di stato. I launcher compatibili mostrano il pallino quando è presente una notifica attiva. In **Impostazioni → Aggiornamenti** puoi aderire alla beta: le prerelease sono facoltative e vengono proposte solo a chi aderisce al canale. Uscire conserva i dati e torna a cercare soltanto versioni stabili, senza downgrade automatici. Vedi [branding](docs/BRANDING.md) e [canali di aggiornamento](docs/UPDATES.md).
+Il nome resta **Shiftrail**. L’icona adattiva usa l’immagine **The World** fornita dall’utente, con il bordo giallo interamente visibile. La barra di stato conserva il simbolo monocromatico a forma di S. I launcher compatibili mostrano il pallino quando è presente una notifica attiva. In **Impostazioni → Aggiornamenti** puoi aderire alla beta: le prerelease sono facoltative e vengono proposte solo a chi aderisce al canale. Uscire conserva i dati e torna a cercare soltanto versioni stabili, senza downgrade automatici. Vedi [branding](docs/BRANDING.md) e [canali di aggiornamento](docs/UPDATES.md).
 
 ## Build
 

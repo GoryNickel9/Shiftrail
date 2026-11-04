@@ -2,17 +2,21 @@
 
 Nome scelto dall’utente il 7 ottobre 2026. Unisce «shift», turno, e «trail», percorso: dalla foto del tabellone agli eventi del calendario. Il nome visualizzato cambia; application ID, database e identità degli eventi restano compatibili con gli aggiornamenti precedenti.
 
-Lo stile usa blu, verde menta, testo blu scuro e superfici chiare. La modalità scura segue Android. Dal 27 ottobre 2026 il nuovo simbolo vettoriale dell’app è una S a forma di percorso, con due estremi verde menta su fondo blu. Il nome Shiftrail è stato confermato dall’utente. Il simbolo resta separato dall’illustrazione raster della home.
+Lo stile usa blu, verde menta, testo blu scuro e superfici chiare. La modalità scura segue Android. Dal 4 novembre 2026 l’icona del launcher usa l’immagine The World fornita dall’utente. Il simbolo vettoriale a forma di S resta nell’intestazione e nelle notifiche. L’illustrazione della home è separata dall’icona.
 
 ## Icona e notifiche
 
-L’icona è disegnata direttamente nei vettori Android del progetto; non usa una nuova immagine generativa o una libreria di icone esterna. `drawable/shiftrail_mark.xml` è il disegno a colori, `shiftrail_mark_monochrome.xml` è la variante per le icone a tema di Android 13+, e `ic_notification.xml` adatta la stessa silhouette alla barra di stato. `mipmap-anydpi/ic_launcher.xml` definisce l’icona adattiva con i tre livelli: il launcher sceglie la maschera. Il progetto richiede già Android 8.0, quindi non conserva un’icona legacy inutilizzata.
+`drawable-nodpi/shiftrail_launcher_artwork.png` è una copia integrale del PNG The World, 1920×1920 con trasparenza, fornito dall’utente. `mipmap-anydpi/ic_launcher.xml` lo inserisce nel livello foreground con un margine proporzionale del 19,444444% per lato, equivalente a 21dp su 108dp: l’immagine occupa i 66dp centrali del livello, secondo la [zona sicura delle icone adattive Android](https://developer.android.com/develop/ui/compose/system/icon_design_adaptive). Il margine scala anche nelle anteprime ad alta risoluzione. Il fondo `#E8BD11` riprende il bordo giallo dell’immagine e riempie l’area esterna scelta dalla maschera del launcher. Il file sorgente non viene ritagliato o ridisegnato.
 
-Il fondo è blu `#2255C7`, il tratto è bianco e gli estremi sono verde menta `#8DE3CC`. Il simbolo principale resta nella zona sicura delle icone adattive. La versione monocromatica conserva l’alpha della silhouette, così Android può applicare il colore scelto dall’utente.
+L’icona non dichiara un livello `monochrome`, per evitare che le icone a tema mostrino ancora la precedente S. Android 16 QPR 2 e successivi possono applicare automaticamente un tema anche senza questo livello. `drawable/shiftrail_mark.xml` rimane il simbolo dell’intestazione; `ic_notification.xml` resta la silhouette monocromatica per la barra di stato. Il progetto richiede Android 8.0 o successivo.
+
+Anteprima dell’icona corrente, esportata a 512×512 dal renderer Android 15:
+
+<img src="images/shiftrail-icon-the-world.png" alt="Icona Shiftrail con The World e bordo giallo completo" width="256">
 
 Le notifiche abilitano il badge e usano il simbolo monocromatico. Nei launcher compatibili un pallino indica una notifica ancora attiva. È un’indicazione gestita da Android: espandere la tendina non equivale a leggere la notifica; il pallino scompare quando l’avviso viene aperto o rimosso. Colore e forma dipendono dal launcher e dalle impostazioni di sistema. Non viene disegnato un contatore permanente dentro l’icona dell’app.
 
-`NotificationPreviewTest` usa il renderer Android per esportare l’icona e cattura barra di stato, notifica e launcher con un turno sintetico 22:00–06:00. Queste anteprime mostrano il layout effettivo dell’emulatore Android 15; altri dispositivi possono mostrare un aspetto diverso.
+`NotificationPreviewTest` usa il renderer Android per esportare l’icona e cattura barra di stato, notifica e launcher con un turno sintetico 22:00–06:00. Le catture seguenti risalgono al precedente simbolo a S, su Android 15; altri dispositivi possono mostrare un aspetto diverso.
 
 | Icona | Notifica Android | Notifica attiva sul launcher |
 | --- | --- | --- |

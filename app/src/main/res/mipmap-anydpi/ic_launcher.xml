@@ -1,5 +1,9 @@
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/shiftrail_icon_blue" />
-    <foreground android:drawable="@drawable/shiftrail_mark" />
-    <monochrome android:drawable="@drawable/shiftrail_mark_monochrome" />
+    <background android:drawable="@color/shiftrail_icon_gold" />
+    <foreground>
+        <!-- 21/108 on each side keeps the artwork in the 66/108 safe zone at every render size. -->
+        <inset android:inset="19.444444%">
+            <bitmap android:src="@drawable/shiftrail_launcher_artwork" android:gravity="fill" android:filter="true" />
+        </inset>
+    </foreground>
 </adaptive-icon>

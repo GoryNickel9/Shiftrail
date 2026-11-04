@@ -1,5 +1,15 @@
 # Verifiche e riproduzione
 
+## Icona The World — 4 novembre 2026, senza release
+
+Il PNG fornito dall’utente è copiato senza modifiche in `app/src/main/res/drawable-nodpi/shiftrail_launcher_artwork.png`: 1920×1920, 691.242 byte, SHA-256 `280fbe805d849a13d2e2066c2fb98b914ca8d5c6d99ab4e4707b37a63cd67369`, identico al file sorgente. L’icona adattiva conserva il bordo giallo e usa lo stesso colore per il fondo. La prima anteprima a 512×512 tagliava il bordo con un margine fisso di 21dp; il margine proporzionale del 19,444444% per lato corregge il ritaglio. L’anteprima finale è stata ispezionata in `docs/images/shiftrail-icon-the-world.png`.
+
+`scripts/verify-windows.ps1 -Jdk "C:\Program Files\Java\jdk-21" -Release` ha completato build debug e release, test JVM, lint e controllo ktfmt. Sono passati 90 test JVM distinti: 76 core e 14 app, questi ultimi eseguiti sia in debug sia in release, per 104 esecuzioni. Lint riporta zero errori e 83 avvisi, incluso `MonochromeLauncherIcon`: il livello monocromatico della precedente S è stato rimosso intenzionalmente. Log finale: `artifacts/icon-the-world/verification-final.log`. È passato anche `:app:assembleDebugAndroidTest` (`android-test-build.log`).
+
+Su emulatore Android 15/API 35, `NotificationPreviewTest` ha completato esportazione dell’icona, notifica e presenza dell’app nel launcher: `OK (1 test)`, 6,125 secondi (`artifacts/icon-the-world/android-preview-final.log`). Due tentativi precedenti erano falliti rispettivamente nella ricerca dell’icona sul launcher e nella verifica della notifica attiva. Il test non è stato modificato. Le notifiche mantengono il simbolo monocromatico a S.
+
+L’APK release è 54.634.727 byte, SHA-256 `c7f7061ca1acbacbea801536baee54bf6f3ea44c69c3b3775e7b321d829608b4`. `apksigner verify --print-certs` conferma la firma attesa in `signing-certificate.sha256`: `24dd3588ea4ba44f365d2a76d84c406e5d7c358d0d254bd5c748c312553bfaa0`. Versione e build restano 1.0.4/21. Non sono stati pubblicati APK, release o tag; nessun benchmark o test su telefono fisico.
+
 ## Preparazione della versione 0.5.0 — 28 ottobre 2026
 
 La [release stabile v0.5.0](https://github.com/GoryNickel9/app-turni/releases/tag/v0.5.0) è pubblicata sul commit `506847a185a2194425e386077bd7b9e5bad5c9ed`, dopo il successo della [CI](https://github.com/GoryNickel9/app-turni/actions/runs/40603144912). Comprende APK, `update.json` e `SHA256SUMS.txt`; il tag remoto punta allo stesso commit e la release è `latest`, pubblica e non prerelease. L’APK finale è stato ricostruito dopo il commit per aggiornare i metadati VCS, senza cambiare il codice verificato (`artifacts/release-0.5.0-final-apk.log`). SHA-256: `f61d20a28e2e9b05e7c8e12c9c63454846a0ec376d1b8e749c7e3f2eee015085`.
