@@ -18,6 +18,7 @@ class TurniApplication : Application() {
                 TurniDatabase.MIGRATION_2_3,
                 TurniDatabase.MIGRATION_3_4,
                 TurniDatabase.MIGRATION_4_5,
+                TurniDatabase.MIGRATION_5_6,
             )
             .build()
     }
@@ -31,6 +32,11 @@ class TurniApplication : Application() {
         super.onCreate()
         // Captures are private, temporary and never backed up. Clear leftovers after process death.
         cacheDir.listFiles()?.filter { it.name.startsWith("turni-") }?.forEach { it.delete() }
+        java.io
+            .File(filesDir, "payroll")
+            .listFiles()
+            ?.filter { it.name.startsWith("import-") && it.extension == "tmp" }
+            ?.forEach { it.delete() }
         backgroundScope.launch {
             database.dao().observeSettings().collectLatest { notifications.requestRefresh() }
         }

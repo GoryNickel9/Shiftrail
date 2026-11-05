@@ -33,29 +33,37 @@ class DatabaseTest {
                     "2026-10-29T02:00",
                     "2026-10-29T02:30",
                 )
-            Room.databaseBuilder(context, TurniDatabase::class.java, name).build().let { db ->
-                try {
-                    assertNotNull(db.dao().findExtra("employee", "2026-10-28", "22:00", "06:00"))
-                    db.dao().saveBreak(pause)
-                    db.dao().saveBreak(pause.copy(endDateTime = "2026-10-29T03:00"))
-                } finally {
-                    db.close()
+            Room.databaseBuilder(context, TurniDatabase::class.java, name)
+                .addMigrations(TurniDatabase.MIGRATION_5_6)
+                .build()
+                .let { db ->
+                    try {
+                        assertNotNull(
+                            db.dao().findExtra("employee", "2026-10-28", "22:00", "06:00")
+                        )
+                        db.dao().saveBreak(pause)
+                        db.dao().saveBreak(pause.copy(endDateTime = "2026-10-29T03:00"))
+                    } finally {
+                        db.close()
+                    }
                 }
-            }
-            Room.databaseBuilder(context, TurniDatabase::class.java, name).build().let { db ->
-                try {
-                    assertEquals(
-                        listOf(pause.copy(endDateTime = "2026-10-29T03:00")),
-                        db.dao().breaks("employee", "extra"),
-                    )
-                    db.dao().removeBreak("pause", "different-employee")
-                    assertEquals(1, db.dao().breaks("employee", "extra").size)
-                    db.dao().removePeriodBreaks("extra")
-                    assertTrue(db.dao().breaks("employee", "extra").isEmpty())
-                } finally {
-                    db.close()
+            Room.databaseBuilder(context, TurniDatabase::class.java, name)
+                .addMigrations(TurniDatabase.MIGRATION_5_6)
+                .build()
+                .let { db ->
+                    try {
+                        assertEquals(
+                            listOf(pause.copy(endDateTime = "2026-10-29T03:00")),
+                            db.dao().breaks("employee", "extra"),
+                        )
+                        db.dao().removeBreak("pause", "different-employee")
+                        assertEquals(1, db.dao().breaks("employee", "extra").size)
+                        db.dao().removePeriodBreaks("extra")
+                        assertTrue(db.dao().breaks("employee", "extra").isEmpty())
+                    } finally {
+                        db.close()
+                    }
                 }
-            }
         } finally {
             context.deleteDatabase(name)
         }
@@ -93,7 +101,10 @@ class DatabaseTest {
                     TurniDatabase.MIGRATION_4_5,
                 )
                 .close()
-            val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()
+            val db =
+                Room.databaseBuilder(context, TurniDatabase::class.java, name)
+                    .addMigrations(TurniDatabase.MIGRATION_5_6)
+                    .build()
             try {
                 assertEquals("Luca Baldeddu", db.dao().profile()!!.name)
                 assertEquals(123L, db.dao().shifts("week").single().calendarEventId)
@@ -180,7 +191,10 @@ class DatabaseTest {
                     TurniDatabase.MIGRATION_4_5,
                 )
                 .close()
-            val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()
+            val db =
+                Room.databaseBuilder(context, TurniDatabase::class.java, name)
+                    .addMigrations(TurniDatabase.MIGRATION_5_6)
+                    .build()
             try {
                 val settings = requireNotNull(db.dao().settings())
                 assertEquals(42L, settings.calendarId)
@@ -222,7 +236,10 @@ class DatabaseTest {
                     TurniDatabase.MIGRATION_4_5,
                 )
                 .close()
-            val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()
+            val db =
+                Room.databaseBuilder(context, TurniDatabase::class.java, name)
+                    .addMigrations(TurniDatabase.MIGRATION_5_6)
+                    .build()
             try {
                 val settings = requireNotNull(db.dao().settings())
                 assertEquals(1440, settings.notificationMinutes)

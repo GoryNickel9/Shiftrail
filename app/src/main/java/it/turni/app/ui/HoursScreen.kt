@@ -30,7 +30,13 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit, reselection: Int = 0) {
+fun HoursScreen(
+    state: AppState,
+    vm: AppViewModel,
+    onSettings: () -> Unit,
+    reselection: Int = 0,
+    onPayroll: (YearMonth) -> Unit,
+) {
     var monthText by rememberSaveable { mutableStateOf(YearMonth.now().toString()) }
     val month = YearMonth.parse(monthText)
     var weekIndex by rememberSaveable(monthText) { mutableIntStateOf(-1) }
@@ -259,6 +265,29 @@ fun HoursScreen(state: AppState, vm: AppViewModel, onSettings: () -> Unit, resel
                     }
                 }
 
+                item {
+                    OutlinedCard(Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                stringResource(R.string.payroll_start),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                stringResource(R.string.payroll_intro),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Button(
+                                onClick = { onPayroll(month) },
+                                modifier = Modifier.testTag("open_payroll"),
+                            ) {
+                                Text(stringResource(R.string.payroll_start))
+                            }
+                        }
+                    }
+                }
                 if (state.hoursLoaded && summary.entries.isEmpty())
                     item { Text(stringResource(R.string.hours_empty)) }
                 items(summary.entries, key = { it.period.id }) { entry ->

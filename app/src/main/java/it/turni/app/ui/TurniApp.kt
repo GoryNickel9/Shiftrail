@@ -153,7 +153,11 @@ fun TurniApp(vm: AppViewModel) {
                 )
             },
             bottomBar = {
-                if (state.loaded && route in listOf("home", "hours", "settings")) {
+                if (
+                    state.loaded &&
+                        (route in listOf("home", "hours", "settings") ||
+                            route?.startsWith("payroll/") == true)
+                ) {
                     NavigationBar {
                         listOf(
                                 Triple("home", R.string.home, R.drawable.ic_calendar),
@@ -163,7 +167,10 @@ fun TurniApp(vm: AppViewModel) {
                             .forEach { (destination, label, icon) ->
                                 NavigationBarItem(
                                     modifier = Modifier.testTag("tab_$destination"),
-                                    selected = route == destination,
+                                    selected =
+                                        route == destination ||
+                                            (destination == "hours" &&
+                                                route?.startsWith("payroll/") == true),
                                     colors =
                                         NavigationBarItemDefaults.colors(
                                             indicatorColor =
@@ -266,6 +273,16 @@ fun TurniApp(vm: AppViewModel) {
                                     nav.navigate("settings")
                                 },
                                 reselection = hoursReselection,
+                                onPayroll = { month -> nav.navigate("payroll/$month") },
+                            )
+                        }
+                        composable("payroll/{month}") { entry ->
+                            PayrollScreen(
+                                state,
+                                vm,
+                                java.time.YearMonth.parse(
+                                    requireNotNull(entry.arguments?.getString("month"))
+                                ),
                             )
                         }
                         composable("camera") {

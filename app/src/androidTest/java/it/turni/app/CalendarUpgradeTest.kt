@@ -114,7 +114,10 @@ class CalendarUpgradeTest {
                             TurniDatabase.MIGRATION_4_5,
                         )
                         .close()
-                    val db = Room.databaseBuilder(context, TurniDatabase::class.java, name).build()
+                    val db =
+                        Room.databaseBuilder(context, TurniDatabase::class.java, name)
+                            .addMigrations(TurniDatabase.MIGRATION_5_6)
+                            .build()
                     try {
                         val settings = requireNotNull(db.dao().settings())
                         assertEquals(original.id, settings.calendarId)

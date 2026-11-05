@@ -3,6 +3,7 @@ package it.turni.app.data
 import androidx.room.*
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import it.turni.app.payroll.PayrollReportEntity
 import it.turni.core.*
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -115,6 +116,19 @@ data class ExtraWorkEntity(
 
 @Dao
 interface TurniDao {
+    @Query("SELECT * FROM payroll_reports WHERE employeeId = :employee ORDER BY updatedAt DESC, id")
+    fun payrollReports(employee: String): Flow<List<PayrollReportEntity>>
+
+    @Query(
+        "SELECT * FROM payroll_reports WHERE employeeId = :employee AND sourceHash = :hash LIMIT 1"
+    )
+    suspend fun payrollByHash(employee: String, hash: String): PayrollReportEntity?
+
+    @Upsert suspend fun savePayroll(report: PayrollReportEntity)
+
+    @Query("DELETE FROM payroll_reports WHERE id = :id AND employeeId = :employee")
+    suspend fun removePayroll(id: String, employee: String)
+
     @Query("SELECT * FROM unpaid_breaks WHERE employeeId = :employee ORDER BY startDateTime, id")
     fun allBreaks(employee: String): Flow<List<UnpaidBreakEntity>>
 
@@ -243,14 +257,29 @@ data class UnpaidBreakEntity(
             SettingsEntity::class,
             ExtraWorkEntity::class,
             UnpaidBreakEntity::class,
+            PayrollReportEntity::class,
         ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class TurniDatabase : RoomDatabase() {
     abstract fun dao(): TurniDao
 
     companion object {
+        val MIGRATION_5_6 =
+            object : Migration(5, 6) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS payroll_reports (id TEXT NOT NULL, employeeId TEXT NOT NULL, month TEXT NOT NULL, sourceHash TEXT NOT NULL, createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(id))"
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_payroll_reports_employeeId_month ON payroll_reports (employeeId, month)"
+                    )
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS index_payroll_reports_employeeId_sourceHash ON payroll_reports (employeeId, sourceHash)"
+                    )
+                }
+            }
         val MIGRATION_4_5 =
             object : Migration(4, 5) {
                 override fun migrate(db: SupportSQLiteDatabase) {

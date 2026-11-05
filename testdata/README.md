@@ -11,3 +11,7 @@ I test Android usano anche una copia ridotta a 1000×750 e un tabellone generato
 `PrivatePhotoTest` è un controllo locale facoltativo. Legge la foto da `/data/local/tmp/turni-regression.png` tramite la shell dell’emulatore; nome, lunedì e sette valori attesi arrivano dagli argomenti `employee`, `monday`, `shifts`, insieme a `privatePhoto=true`. La foto non entra negli asset, nell’APK o nel repository. Il controllo accetta un valore corretto oppure una cella UNKNOWN che conserva l’alternativa corretta e richiede revisione; rifiuta un orario sbagliato esportabile. Non incorpora coordinate di un tabellone specifico.
 
 Il parametro facoltativo `requireUnambiguous=true` richiede che tutte le sette celle siano leggibili e corrette, senza accettare UNKNOWN. Serve per verificare un recupero completo quando i valori attesi della foto sono disponibili. Dopo l’esecuzione, rimuovere la sola copia temporanea con `adb shell rm /data/local/tmp/turni-regression.png`.
+
+## Cartellini presenze
+
+`PayrollFixture` genera un PDF con persone fittizie durante i test Android. Non aggiungere cartellini personali al repository o agli asset dell’APK. La regressione privata facoltativa usa un file locale indicato con `payrollPdfPath` e va eseguita separatamente dalle fixture pubbliche.

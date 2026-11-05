@@ -4,9 +4,11 @@ App Android nativa che legge la tua riga da una foto del tabellone settimanale e
 
 Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, coroutine, ViewModel/StateFlow e Navigation Compose. Nessun account dell’app, backend o API AI a pagamento.
 
+**Orario → Controlla cedolino** permette di caricare un cartellino PDF INAZ RP7000, verificarne la lettura e confrontare ore nette e timbrature tramite schede giornaliere. Il documento resta sul dispositivo; il controllo non modifica il calendario. Formato supportato, regole del confronto e limiti sono descritti in [Controllo del cartellino](docs/PAYROLL_CHECK.md).
+
 ## Download e release
 
-**Shiftrail 1.0.5** aggiunge l’icona **The World** scelta dall’utente, con il bordo giallo completo. L’aggiornamento si scarica dall’app e conserva i dati esistenti. Vedi le [note della versione](docs/releases/1.0.5.md), il [branding](docs/BRANDING.md) e il [sistema di aggiornamento](docs/UPDATES.md).
+**Shiftrail 1.1.0** aggiunge il controllo del cartellino PDF con schede giornaliere, letture correggibili e confronto di ore e orari. Supporta inizialmente INAZ RP7000 di una pagina; gli scarti basati su letture incerte restano provvisori. L’aggiornamento conserva i dati esistenti. Vedi le [note della versione](docs/releases/1.1.0.md) e il [sistema di aggiornamento](docs/UPDATES.md).
 
 [Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
 
@@ -80,6 +82,8 @@ La versione 0.1.4 usa la grammatica degli orari per proporre il recupero di un c
 CAMERA serve soltanto alla cattura. Il Photo Picker non richiede accesso all’intera galleria. READ_CALENDAR e WRITE_CALENDAR sono richiesti quando si continua dalla revisione. Le catture temporanee vengono rimosse dopo la lettura e all’avvio successivo in caso di interruzione. L’immagine viene conservata in memoria durante la revisione; l’utente può salvarne una copia tramite il selettore Android.
 
 Room conserva profilo, alias, legenda, impostazioni, fingerprint e associazioni dei turni sincronizzati. Le foto, il testo OCR degli altri dipendenti e i token non vengono salvati nel database. Backup Android disattivato. INTERNET serve al controllo e al download delle GitHub Releases; foto, testo OCR, profilo e calendari non vengono inviati all’updater. Il provider del calendario può sincronizzare gli eventi con Google o altri account secondo le impostazioni del dispositivo.
+
+Per il controllo cedolino, l’app conserva il PDF selezionato nella propria memoria privata e le letture del cartellino in Room. **Elimina controllo** rimuove entrambi. Il file originale scelto dal selettore Android resta disponibile nella sua posizione.
 
 ## Calendario e limiti
 

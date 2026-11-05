@@ -53,6 +53,8 @@ data class AppState(
     val hoursBreaks: List<UnpaidBreakEntity> = emptyList(),
     val hoursLoaded: Boolean = false,
     val hoursCalendarAvailable: Boolean = false,
+    val hoursRestDates: Set<LocalDate> = emptySet(),
+    val hoursReadError: Boolean = false,
     val updater: UpdateState = UpdateState(),
     val background: Bitmap? = null,
     val theme: AppTheme = AppTheme.SYSTEM,
@@ -291,6 +293,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val extras: List<ExtraWorkEntity>,
         val calendarAvailable: Boolean,
         val breaks: List<UnpaidBreakEntity>,
+        val restDates: Set<LocalDate>,
     )
 
     fun loadHours(month: YearMonth) {
@@ -308,6 +311,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 hoursPeriods = emptyList(),
                 hoursExtras = emptyList(),
                 hoursBreaks = emptyList(),
+                hoursRestDates = emptySet(),
+                hoursReadError = false,
             )
         }
         hoursJob = viewModelScope.launch {
@@ -374,17 +379,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         extras,
                         calendarAvailable,
                         breaks,
+                        current
+                            .filter { it.type == CellType.CODE.name && it.code == "X" }
+                            .map { LocalDate.parse(it.date) }
+                            .toSet(),
                     )
                 }
                 .catch { error ->
                     mutable.update {
                         it.copy(
                             hoursLoaded = true,
+                            hoursReadError = true,
                             error = errorText(error as? Exception ?: Exception(error)),
                         )
                     }
                 }
-                .collect { (upcoming, periods, extras, calendarAvailable, breaks) ->
+                .collect { (upcoming, periods, extras, calendarAvailable, breaks, restDates) ->
                     app.notifications.requestRefresh()
                     mutable.update {
                         it.copy(
@@ -394,6 +404,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             hoursBreaks = breaks,
                             hoursLoaded = true,
                             hoursCalendarAvailable = calendarAvailable,
+                            hoursRestDates = restDates,
+                            hoursReadError = false,
                         )
                     }
                 }
