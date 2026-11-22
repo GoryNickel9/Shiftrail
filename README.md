@@ -8,7 +8,7 @@ Android 8.0 o successivo, Kotlin, Compose Material 3, CameraX, ML Kit, Room, cor
 
 ## Download e release
 
-**Shiftrail 1.1.0** aggiunge il controllo del cartellino PDF con schede giornaliere, letture correggibili e confronto di ore e orari. Supporta inizialmente INAZ RP7000 di una pagina; gli scarti basati su letture incerte restano provvisori. L’aggiornamento conserva i dati esistenti. Vedi le [note della versione](docs/releases/1.1.0.md) e il [sistema di aggiornamento](docs/UPDATES.md).
+**Shiftrail 1.1.1** permette di cambiare la data di un turno importato da **Orario → Modifica**. Dopo il salvataggio, Orario apre il mese di destinazione e il calendario aggiorna lo stesso evento. Vedi le [note della versione](docs/releases/1.1.1.md) e il [sistema di aggiornamento](docs/UPDATES.md).
 
 [Scarica l’ultima versione](https://github.com/GoryNickel9/app-turni/releases/latest) · [Tutte le release](https://github.com/GoryNickel9/app-turni/releases)
 

@@ -248,6 +248,90 @@ class ShiftHoursUiTest {
             waitForTotal("4 h 00 min")
             compose.activityRule.scenario.recreate()
             waitForTotal("4 h 00 min")
+
+            val destination = YearMonth.from(date).plusMonths(1).atDay(3)
+            val pause =
+                UnpaidBreakEntity(
+                    "edit-hours-pause",
+                    profile.id,
+                    shiftId,
+                    date.atTime(22, 0).toString(),
+                    date.atTime(22, 30).toString(),
+                )
+            runBlocking { dao.saveBreak(pause) }
+            waitForTotal("3 h 30 min")
+            openEdit(shiftId)
+            compose.onNodeWithTag("extra_date").performTextReplacement(destination.toString())
+            compose.onNodeWithTag("extra_date").assertTextContains(destination.toString())
+            compose.onNodeWithText("Salva").performClick()
+            compose.waitUntil(15000) {
+                runBlocking { dao.shift(shiftId, profile.id)?.date } == destination.toString()
+            }
+            compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+            waitForTotal("3 h 30 min")
+            val moved = requireNotNull(runBlocking { app.calendar.event(eventId) })
+            assertEquals(
+                destination.atTime(21, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                moved.start,
+            )
+            assertEquals(
+                destination
+                    .plusDays(1)
+                    .atTime(1, 0)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli(),
+                moved.end,
+            )
+            assertEquals(
+                destination.atTime(22, 0).toString(),
+                runBlocking { dao.breaks(profile.id, shiftId).single().startDateTime },
+            )
+            assertEquals(weekId, runBlocking { dao.shift(shiftId, profile.id)?.weekId })
+            assertEquals(
+                eventId,
+                runBlocking {
+                    app.calendar.findMarker(
+                        calendarId,
+                        eventMarker(profile.id, destination, calendarId),
+                    )
+                },
+            )
+            compose.activityRule.scenario.recreate()
+            waitForTotal("3 h 30 min")
+            compose.onNodeWithTag("previous_month").performClick()
+            waitForTotal("0 h 00 min")
+            val sourceExtra =
+                ExtraWorkEntity(
+                    "edit-hours-source-extra",
+                    profile.id,
+                    date.toString(),
+                    "12:00",
+                    "13:00",
+                    1,
+                )
+            runBlocking {
+                app.sync.saveExtra(
+                    sourceExtra,
+                    null,
+                    calendarId,
+                    EventOptions(),
+                    ZoneId.systemDefault(),
+                )
+            }
+            try {
+                waitForTotal("1 h 00 min")
+                assertEquals(
+                    destination.toString(),
+                    runBlocking { dao.shift(shiftId, profile.id)?.date },
+                )
+            } finally {
+                runBlocking {
+                    app.sync.removeExtra(sourceExtra, EventOptions(), ZoneId.systemDefault())
+                }
+            }
+            compose.onNodeWithTag("next_month").performClick()
+            waitForTotal("3 h 30 min")
             resolver.delete(eventUri, null, null)
             waitForTotal("0 h 00 min")
         } finally {

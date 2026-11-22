@@ -3,9 +3,13 @@ package it.turni.app.calendar
 import androidx.room.withTransaction
 import it.turni.app.data.*
 import it.turni.core.*
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
+import java.util.UUID
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -79,7 +83,7 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
             var base =
                 old
                     ?: ShiftEntity(
-                        sha256("$employee|$day|$destination"),
+                        newShiftId(employee, date, destination),
                         week?.id ?: sha256("$employee|${date.with(java.time.DayOfWeek.MONDAY)}"),
                         employee,
                         day,
@@ -191,14 +195,20 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
         end: LocalTime,
         options: EventOptions,
         zone: ZoneId,
+        newDate: LocalDate? = null,
+        previousDate: LocalDate? = null,
     ) = mutex.withLock {
         require(start != end) { "INVALID_DURATION" }
         val old = requireNotNull(db.dao().shift(shiftId, employee))
         val originalDate = LocalDate.parse(old.date)
         val marker = eventMarker(employee, originalDate, old.calendarId)
         val direct = calendar.event(old.calendarEventId)
+        val identity = shiftIdentity(shiftId)
         if (direct != null)
-            require(direct.calendarId == old.calendarId && direct.description.contains(marker)) {
+            require(
+                direct.calendarId == old.calendarId &&
+                    (direct.description.contains(marker) || direct.description.contains(identity))
+            ) {
                 "CALENDAR_OWNERSHIP_CHANGED"
             }
         val eventId = direct?.id ?: calendar.findMarker(old.calendarId, marker)
@@ -213,19 +223,60 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
             val providerEnd = java.time.Instant.ofEpochMilli(it.end).atZone(zone).toLocalDateTime()
             require(providerEnd < providerStart.plusDays(1)) { "CALENDAR_EDIT_DURATION" }
         }
-        val date =
-            provider?.let { java.time.Instant.ofEpochMilli(it.start).atZone(zone).toLocalDate() }
-                ?: originalDate
+        fun ProviderEvent.date() =
+            Instant.ofEpochMilli(this.start)
+                .atZone(if (allDay) ZoneOffset.UTC else zone)
+                .toLocalDate()
+        val liveDate = provider?.date() ?: originalDate
+        // The event can already have moved if the provider write succeeded before Room committed.
+        val recovering =
+            direct?.description?.contains(identity) == true && !direct.description.contains(marker)
+        val date = newDate ?: liveDate
+        val moving = newDate != null || recovering
+        val sourceDate = if (recovering) originalDate else liveDate
+        val extras = db.dao().allExtraWork(employee).first()
+        val targetMarker = if (moving) eventMarker(employee, date, old.calendarId) else marker
+        if (moving) {
+            require(date.year in 1900..2100)
+            require(previousDate == null || previousDate == liveDate || recovering) {
+                "CALENDAR_OWNERSHIP_CHANGED"
+            }
+            require(
+                extras.none { LocalDate.parse(it.date) in setOf(originalDate, sourceDate, date) }
+            ) {
+                "SHIFT_DATE_EXTRAS"
+            }
+            val others = db.dao().allRecordedShifts(employee).first().filter { it.id != shiftId }
+            val targetId = calendar.findMarker(old.calendarId, targetMarker)
+            require(
+                (targetId == null || targetId == eventId) &&
+                    others.none { it.date == date.toString() || it.date == old.date } &&
+                    calendar.events(others.map { it.calendarEventId }).values.none {
+                        it.date() == date
+                    }
+            ) {
+                "SHIFT_DATE_OCCUPIED"
+            }
+        }
+        val shiftDays = if (moving) ChronoUnit.DAYS.between(sourceDate, date) else 0
+        val pauses =
+            db.dao().breaks(employee, shiftId).map { pause ->
+                if (shiftDays == 0L) pause
+                else
+                    pause.copy(
+                        startDateTime = pause.domain().start.plusDays(shiftDays).toString(),
+                        endDateTime = pause.domain().end.plusDays(shiftDays).toString(),
+                    )
+            }
         WorkPeriod(
                 shiftId,
                 date,
                 start,
                 end,
                 WorkSource.SCHEDULE,
-                breaks = db.dao().breaks(employee, shiftId).map { it.domain() },
+                breaks = pauses.map { it.domain() },
             )
             .validateBreaks()
-        val extras = db.dao().allExtraWork(employee).first()
         val expanded =
             extraHoursCell(
                 old.copy(
@@ -239,21 +290,39 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
             )
         val event = requireNotNull(EventFactory.create(expanded, emptyList(), options, zone))
         val ids =
-            calendar.apply(old.calendarId, listOf(CalendarMutation(date, event, eventId, marker)))
-        // Keep the imported week, source hash and shift ID when editing a single day.
-        db.dao()
-            .saveShift(
-                old.copy(
-                    startTime = start.toString(),
-                    endTime = end.toString(),
-                    endNextDay = end < start,
-                    type = CellType.WORK_SHIFT.name,
-                    code = null,
-                    calendarEventId = requireNotNull(ids[date]),
-                    contentSignature = event.contentSignature,
-                    updatedAt = maxOf(System.currentTimeMillis(), old.updatedAt + 1),
-                )
+            calendar.apply(
+                old.calendarId,
+                listOf(
+                    CalendarMutation(
+                        date,
+                        event,
+                        eventId,
+                        targetMarker,
+                        previousMarker =
+                            if (recovering) eventMarker(employee, liveDate, old.calendarId)
+                            else marker,
+                        shiftIdentity = identity.takeIf { moving },
+                    )
+                ),
             )
+        db.withTransaction {
+            // Keep the imported week, source hash and shift ID when editing a single day.
+            db.dao()
+                .saveShift(
+                    old.copy(
+                        date = if (moving) date.toString() else old.date,
+                        startTime = start.toString(),
+                        endTime = end.toString(),
+                        endNextDay = end < start,
+                        type = CellType.WORK_SHIFT.name,
+                        code = null,
+                        calendarEventId = requireNotNull(ids[date]),
+                        contentSignature = event.contentSignature,
+                        updatedAt = maxOf(System.currentTimeMillis(), old.updatedAt + 1),
+                    )
+                )
+            if (shiftDays != 0L) pauses.forEach { db.dao().saveBreak(it) }
+        }
     }
 
     suspend fun prepare(
@@ -384,7 +453,8 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
                     db.dao()
                         .saveShift(
                             ShiftEntity(
-                                sha256("${plan.employee}|${cell.date}|${plan.calendar}"),
+                                oldEntity?.id
+                                    ?: newShiftId(plan.employee, cell.date, plan.calendar),
                                 weekId,
                                 plan.employee,
                                 cell.date.toString(),
@@ -405,5 +475,10 @@ class SyncRepository(private val db: TurniDatabase, private val calendar: Calend
             }
         }
         SyncCommitResult(changes.size, receipt.added)
+    }
+
+    private suspend fun newShiftId(employee: String, date: LocalDate, destination: Long): String {
+        val id = sha256("$employee|$date|$destination")
+        return if (db.dao().shift(id, employee) == null) id else UUID.randomUUID().toString()
     }
 }

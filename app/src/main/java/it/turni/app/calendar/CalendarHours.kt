@@ -9,6 +9,8 @@ import java.time.ZoneOffset
 
 data class CalendarSchedule(val shifts: List<ShiftEntity>, val periods: List<WorkPeriod>)
 
+internal fun shiftIdentity(id: String) = "[Shiftrail shift ${sha256(id)}]"
+
 /** Only linked, marked events contribute calendar hours; personal events remain excluded. */
 fun calendarWorkPeriods(
     shifts: List<ShiftEntity>,
@@ -28,13 +30,13 @@ fun calendarSchedule(
         val event = events[shift.calendarEventId] ?: continue
         if (
             event.calendarId != shift.calendarId ||
-                !event.description.contains(
+                (!event.description.contains(
                     eventMarker(
                         shift.employeeId,
                         java.time.LocalDate.parse(shift.date),
                         shift.calendarId,
                     )
-                )
+                ) && !event.description.contains(shiftIdentity(shift.id)))
         )
             throw IllegalArgumentException("CALENDAR_OWNERSHIP_CHANGED")
         if (event.allDay) {

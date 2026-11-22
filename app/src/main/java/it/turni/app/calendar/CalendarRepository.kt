@@ -47,6 +47,8 @@ data class CalendarMutation(
     val event: CalendarEvent?,
     val oldId: Long?,
     val marker: String,
+    val previousMarker: String? = null,
+    val shiftIdentity: String? = null,
 )
 
 data class CalendarWriteResult(val ids: Map<java.time.LocalDate, Long?>, val added: Int)
@@ -260,7 +262,9 @@ class CalendarRepository(private val resolver: ContentResolver) {
                 old?.let { previousIds[mutation.date] = it.id }
                 if (old != null)
                     require(
-                        old.calendarId == calendar && old.description.contains(mutation.marker)
+                        old.calendarId == calendar &&
+                            (old.description.contains(mutation.marker) ||
+                                mutation.previousMarker?.let(old.description::contains) == true)
                     ) {
                         "CALENDAR_OWNERSHIP_CHANGED"
                     }
@@ -290,7 +294,12 @@ class CalendarRepository(private val resolver: ContentResolver) {
                         put(CalendarContract.Events.EVENT_LOCATION, incoming.location)
                         put(
                             CalendarContract.Events.DESCRIPTION,
-                            "${incoming.description}\n${mutation.marker}",
+                            listOfNotNull(
+                                    incoming.description,
+                                    mutation.marker,
+                                    mutation.shiftIdentity,
+                                )
+                                .joinToString("\n"),
                         )
                         put(
                             CalendarContract.Events.HAS_ALARM,

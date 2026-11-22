@@ -482,28 +482,35 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         onSaved()
     }
 
-    fun saveShiftHours(period: WorkPeriod, start: LocalTime, end: LocalTime, onSaved: () -> Unit) =
-        launchWork {
-            require(period.source == WorkSource.SCHEDULE)
-            require(period.endDateTime < period.startDateTime.plusDays(1)) {
-                "CALENDAR_EDIT_DURATION"
-            }
-            val state = mutable.value
-            app.sync.updateHours(
-                requireNotNull(state.profile).id,
-                period.id,
-                start,
-                end,
-                EventOptions(
-                    location = state.settings.location,
-                    description = state.settings.description,
-                    reminderMinutes = state.settings.reminderMinutes,
-                    color = state.settings.eventColor,
-                ),
-                ZoneId.systemDefault(),
-            )
-            onSaved()
+    fun saveShiftHours(
+        period: WorkPeriod,
+        date: LocalDate,
+        start: LocalTime,
+        end: LocalTime,
+        onSaved: () -> Unit,
+    ) = launchWork {
+        require(period.source == WorkSource.SCHEDULE)
+        require(period.endDateTime < period.startDateTime.plusDays(1)) {
+            "CALENDAR_EDIT_DURATION"
         }
+        val state = mutable.value
+        app.sync.updateHours(
+            requireNotNull(state.profile).id,
+            period.id,
+            start,
+            end,
+            EventOptions(
+                location = state.settings.location,
+                description = state.settings.description,
+                reminderMinutes = state.settings.reminderMinutes,
+                color = state.settings.eventColor,
+            ),
+            ZoneId.systemDefault(),
+            newDate = date.takeIf { it != period.date },
+            previousDate = period.date,
+        )
+        onSaved()
+    }
 
     fun removeExtra(extra: ExtraWorkEntity, onRemoved: () -> Unit) = launchWork {
         val employee = requireNotNull(mutable.value.profile).id
@@ -554,6 +561,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 error.message == "CALENDAR_ENABLE_FAILED" -> R.string.calendar_enable_failed
                 error.message == "CALENDAR_WRITE_FAILED" -> R.string.calendar_write_failed
                 error.message == "CALENDAR_EDIT_DURATION" -> R.string.calendar_long_event
+                error.message == "SHIFT_DATE_OCCUPIED" -> R.string.shift_date_occupied
+                error.message == "SHIFT_DATE_EXTRAS" -> R.string.shift_date_extras
                 error.message == "EXTRA_DUPLICATE" -> R.string.extra_duplicate
                 error.message == "BREAK_OUTSIDE_SHIFT" -> R.string.break_outside
                 error.message == "BREAK_OVERLAP" -> R.string.break_overlap

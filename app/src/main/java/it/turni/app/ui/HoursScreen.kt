@@ -508,20 +508,24 @@ fun HoursScreen(
                 editingId = null
             },
         ) { date, start, end ->
+            val onSaved = {
+                if (editing?.source != WorkSource.SCHEDULE || editing.date != date) {
+                    monthText = YearMonth.from(date).toString()
+                    weekIndex = -1
+                }
+                adding = false
+                editingId = null
+            }
             if (editing?.source == WorkSource.SCHEDULE)
-                vm.saveShiftHours(editing, start, end) { editingId = null }
+                vm.saveShiftHours(editing, date, start, end, onSaved)
             else
                 vm.saveExtra(
                     date,
                     start,
                     end,
                     state.hoursExtras.firstOrNull { it.id == editingId },
-                ) {
-                    monthText = YearMonth.from(date).toString()
-                    weekIndex = -1
-                    adding = false
-                    editingId = null
-                }
+                    onSaved,
+                )
         }
     deleting?.let { extra ->
         AlertDialog(
@@ -707,7 +711,8 @@ private fun WorkHoursDialog(
                         Modifier.fillMaxWidth().testTag("extra_date"),
                         label = { Text(stringResource(R.string.date)) },
                         singleLine = true,
-                        readOnly = scheduled,
+                        enabled = !busy,
+                        supportingText = { Text(stringResource(R.string.work_date_format)) },
                     )
                 }
                 item {

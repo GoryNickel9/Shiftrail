@@ -142,6 +142,9 @@
     <string name="calendar_preferences_note">Le preferenze si applicano alla prossima sincronizzazione. Disattivare i riposi non elimina gli eventi già salvati. Colori e avvisi sono gestiti dal calendario del dispositivo.</string>
     <string name="close">Chiudi</string>
     <string name="hours">Orario</string>
+    <string name="work_date_format">Formato AAAA-MM-GG</string>
+    <string name="shift_date_occupied">C’è già un altro turno associato a una delle date. Controlla il calendario prima di riprovare.</string>
+    <string name="shift_date_extras">Per spostare il turno, sposta o rimuovi prima gli straordinari associati alle date coinvolte.</string>
     <string name="hours_calendar_cached">Mostro gli orari salvati nell’app. Consenti l’accesso al calendario per includere le modifiche fatte da altre app.</string>
     <string name="hours_calendar_permission">Consenti accesso al calendario</string>
     <string name="hours_ends_on">Fine il %1$s</string>
